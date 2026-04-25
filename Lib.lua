@@ -498,6 +498,105 @@ function Groupbox:CreateDropdown(text, values, default, callback, id)
     return out
 end
 
+function Groupbox:CreateMultiDropdown(text, values, default, callback, id)
+    id = id or normalizeId(text)
+    values = values or {}
+    default = type(default) == "table" and default or {}
+
+    local row, label = self:_newControlShell(text)
+    label.Size = UDim2.new(0.45, -8, 1, 0)
+
+    local button = Instance.new("TextButton")
+    button.Position = UDim2.new(0.45, 0, 0, 4)
+    button.Size = UDim2.new(0.55, -8, 1, -8)
+    button.BackgroundColor3 = Zilk._theme.MainColor
+    button.BorderSizePixel = 0
+    button.TextColor3 = Zilk._theme.TextColor
+    button.Font = Zilk._theme.Font
+    button.TextSize = 12
+    button.Text = ""
+    button.Parent = row
+    makeCorner(button, 4)
+    makeStroke(button, Zilk._theme.StrokeColor)
+    registerThemeBinding(button, "BackgroundColor3", "MainColor")
+    registerThemeBinding(button, "TextColor3", "TextColor")
+    registerThemeBinding(button, "Font", "Font")
+
+    local list = Instance.new("Frame")
+    list.BackgroundColor3 = Zilk._theme.SectionColor
+    list.BorderSizePixel = 0
+    list.Visible = false
+    list.ZIndex = 60
+    list.Position = UDim2.new(0, 0, 1, 4)
+    list.Size = UDim2.new(1, 0, 0, (#values * 24) + 4)
+    list.Parent = button
+    makeCorner(list, 4)
+    makeStroke(list, Zilk._theme.StrokeColor)
+    registerThemeBinding(list, "BackgroundColor3", "SectionColor")
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 2)
+    layout.Parent = list
+
+    local function selectionText(sel)
+        local picked = {}
+        for _, v in ipairs(values) do
+            if sel[v] then
+                table.insert(picked, tostring(v))
+            end
+        end
+        if #picked == 0 then
+            return "None"
+        end
+        return table.concat(picked, ", ")
+    end
+
+    local record = { id = id, type = "multidropdown", value = cloneTable(default), changed = callback, values = values }
+    local out = makeControlObject(record)
+    Zilk._options[id] = out
+    record.set = function(v, fromApi)
+        if type(v) ~= "table" then
+            return
+        end
+        record.value = cloneTable(v)
+        out.Value = cloneTable(record.value)
+        button.Text = selectionText(record.value)
+        safeCall(record.changed, out.Value)
+    end
+
+    for _, value in ipairs(values) do
+        local opt = Instance.new("TextButton")
+        opt.Size = UDim2.new(1, -4, 0, 22)
+        opt.Position = UDim2.new(0, 2, 0, 0)
+        opt.BackgroundColor3 = Zilk._theme.MainColor
+        opt.BorderSizePixel = 0
+        opt.TextColor3 = Zilk._theme.TextColor
+        opt.Font = Zilk._theme.Font
+        opt.TextSize = 12
+        opt.Text = tostring(value)
+        opt.ZIndex = 61
+        opt.Parent = list
+        makeCorner(opt, 4)
+        registerThemeBinding(opt, "BackgroundColor3", "MainColor")
+        registerThemeBinding(opt, "TextColor3", "TextColor")
+        registerThemeBinding(opt, "Font", "Font")
+
+        opt.MouseButton1Click:Connect(function()
+            local nextValue = cloneTable(record.value)
+            nextValue[value] = not nextValue[value]
+            record.set(nextValue, true)
+        end)
+    end
+
+    button.MouseButton1Click:Connect(function()
+        list.Visible = not list.Visible
+    end)
+
+    addControlRecord(self._window, record)
+    record.set(default, false)
+    return out
+end
+
 function Groupbox:CreateInput(text, default, callback, id)
     id = id or normalizeId(text)
     local row, label = self:_newControlShell(text)
