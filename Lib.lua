@@ -1,5 +1,5 @@
 -- ZilkLib.lua
--- A modern UI library for Roblox exploits
+-- A complete UI library for Roblox exploits
 -- Repository: https://raw.githubusercontent.com/XIMMYzwsss/ZilkLib/refs/heads/main/Lib.lua
 
 local Players = game:GetService("Players")
@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local TextService = game:GetService("TextService")
 local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
@@ -28,43 +29,9 @@ local Options = {}
 getgenv().ZilkToggles = Toggles
 getgenv().ZilkOptions = Options
 
--- Library table
-local Zilk = {
-    Registry = {},
-    RegistryMap = {},
-    Configs = {},
-    
-    -- Default colors
-    FontColor = Color3.fromRGB(255, 255, 255),
-    MainColor = Color3.fromRGB(20, 20, 20),
-    BackgroundColor = Color3.fromRGB(15, 15, 15),
-    AccentColor = Color3.fromRGB(147, 112, 219),
-    OutlineColor = Color3.fromRGB(45, 45, 45),
-    DangerColor = Color3.fromRGB(255, 70, 70),
-    SuccessColor = Color3.fromRGB(70, 255, 70),
-    
-    Font = Enum.Font.Gotham,
-    FontBold = Enum.Font.GothamBold,
-    
-    OpenedFrames = {},
-    Notifications = {},
-    Signals = {},
-    ScreenGui = ScreenGui,
-    
-    -- Config system
-    ConfigFolder = "Zilk",
-    ConfigsLoaded = {},
-    CurrentConfigName = nil,
-    ConfigEdited = false,
-    
-    -- UI elements
-    NotifContainer = nil,
-    Watermark = nil,
-}
-
 -- Helper functions
 local function GetTextBounds(Text, Font, Size)
-    local bounds = TextService:GetTextSize(Text, Size, Font, Vector2.new(1920, 1080))
+    local bounds = TextService:GetTextSize(Text, Size, Font or Enum.Font.Gotham, Vector2.new(1920, 1080))
     return bounds.X, bounds.Y
 end
 
@@ -77,6 +44,56 @@ local function GetLighterColor(Color)
     local H, S, V = Color3.toHSV(Color)
     return Color3.fromHSV(H, S, math.min(V * 1.3, 1))
 end
+
+-- Library table
+local Zilk = {
+    Registry = {},
+    RegistryMap = {},
+    Configs = {},
+    Notifications = {},
+    Signals = {},
+    OpenedFrames = {},
+    
+    -- Default colors (matching HeavN/Blade style)
+    FontColor = Color3.fromRGB(240, 240, 240),
+    MainColor = Color3.fromRGB(10, 10, 10),
+    BackgroundColor = Color3.fromRGB(20, 20, 20),
+    SectionColor = Color3.fromRGB(18, 18, 18),
+    AccentColor = Color3.fromRGB(147, 112, 219),
+    OutlineColor = Color3.fromRGB(35, 35, 35),
+    DangerColor = Color3.fromRGB(255, 70, 70),
+    SuccessColor = Color3.fromRGB(70, 255, 70),
+    ButtonColor = Color3.fromRGB(40, 40, 40),
+    DropdownColor = Color3.fromRGB(30, 30, 30),
+    SliderColor = Color3.fromRGB(147, 112, 219),
+    ToggleOnColor = Color3.fromRGB(255, 255, 255),
+    ToggleOffColor = Color3.fromRGB(30, 30, 30),
+    
+    Font = Enum.Font.Gotham,
+    FontBold = Enum.Font.GothamBold,
+    FontMedium = Enum.Font.GothamMedium,
+    
+    ScreenGui = ScreenGui,
+    
+    -- Config system
+    ConfigFolder = "Zilk",
+    CurrentConfigName = nil,
+    ConfigEdited = false,
+    
+    -- UI References
+    UIReferences = {
+        toggles = {},
+        sliders = {},
+        dropdowns = {},
+        keybinds = {},
+        colorPreviews = {},
+        groupBoxes = {},
+    },
+    
+    -- Watermark
+    Watermark = nil,
+    WatermarkLabel = nil,
+}
 
 -- Add to registry for dynamic color updates
 function Zilk:AddToRegistry(Instance, Properties)
@@ -122,7 +139,7 @@ function Zilk:Create(Class, Properties)
     return Inst
 end
 
-function Zilk:CreateLabel(Properties, IsHud)
+function Zilk:CreateLabel(Properties)
     local Label = self:Create("TextLabel", {
         BackgroundTransparency = 1,
         Font = self.Font,
@@ -132,13 +149,6 @@ function Zilk:CreateLabel(Properties, IsHud)
         TextXAlignment = Enum.TextXAlignment.Left,
     })
     
-    -- Add outline stroke
-    local Stroke = self:Create("UIStroke", {
-        Color = Color3.new(0, 0, 0),
-        Thickness = 1,
-        Parent = Label,
-    })
-    
     self:AddToRegistry(Label, { TextColor3 = "FontColor" })
     
     for Prop, Value in pairs(Properties or {}) do
@@ -146,6 +156,25 @@ function Zilk:CreateLabel(Properties, IsHud)
     end
     
     return Label
+end
+
+-- Add corner radius
+function Zilk:AddCorner(Instance, Radius)
+    local Corner = self:Create("UICorner", {
+        CornerRadius = UDim.new(0, Radius or 4),
+        Parent = Instance,
+    })
+    return Corner
+end
+
+-- Add stroke
+function Zilk:AddStroke(Instance, Color, Thickness)
+    local Stroke = self:Create("UIStroke", {
+        Color = Color or self.OutlineColor,
+        Thickness = Thickness or 1,
+        Parent = Instance,
+    })
+    return Stroke
 end
 
 -- Make frame draggable
@@ -186,26 +215,44 @@ function Zilk:MakeDraggable(Frame, TopCutoff)
     end)
 end
 
+-- Check if any frame is open
+function Zilk:IsAnyFrameOpen()
+    for Frame, _ in pairs(self.OpenedFrames) do
+        if Frame and Frame.Parent and Frame.Visible then
+            local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+            local framePos = Frame.AbsolutePosition
+            local frameSize = Frame.AbsoluteSize
+            
+            if mousePos.X >= framePos.X and mousePos.X <= framePos.X + frameSize.X and
+               mousePos.Y >= framePos.Y and mousePos.Y <= framePos.Y + frameSize.Y then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 -- Add tooltip
 function Zilk:AddTooltip(Text, HoverInstance)
     local X, Y = GetTextBounds(Text, self.Font, 12)
     
     local Tooltip = self:Create("Frame", {
         BackgroundColor3 = self.MainColor,
-        BorderColor3 = self.OutlineColor,
-        Size = UDim2.new(0, X + 8, 0, Y + 4),
+        BorderColor3 = self.AccentColor,
+        Size = UDim2.new(0, X + 12, 0, Y + 6),
         Visible = false,
         ZIndex = 1000,
         Parent = self.ScreenGui,
     })
     
+    self:AddCorner(Tooltip, 4)
     self:AddToRegistry(Tooltip, {
         BackgroundColor3 = "MainColor",
-        BorderColor3 = "OutlineColor",
+        BorderColor3 = "AccentColor",
     })
     
     local Label = self:CreateLabel({
-        Position = UDim2.new(0, 4, 0, 2),
+        Position = UDim2.new(0, 6, 0, 3),
         Size = UDim2.new(0, X, 0, Y),
         Text = Text,
         TextSize = 12,
@@ -231,30 +278,13 @@ function Zilk:AddTooltip(Text, HoverInstance)
     end)
 end
 
--- Check if any frame is open (dropdowns, color pickers, etc)
-function Zilk:IsAnyFrameOpen()
-    for Frame, _ in pairs(self.OpenedFrames) do
-        if Frame and Frame.Parent and Frame.Visible then
-            local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-            local framePos = Frame.AbsolutePosition
-            local frameSize = Frame.AbsoluteSize
-            
-            if mousePos.X >= framePos.X and mousePos.X <= framePos.X + frameSize.X and
-               mousePos.Y >= framePos.Y and mousePos.Y <= framePos.Y + frameSize.Y then
-                return true
-            end
-        end
-    end
-    return false
-end
-
 -- Notification system
 function Zilk:Notify(Title, Message, Duration, Color)
     if not self.NotifContainer then
         self.NotifContainer = self:Create("Frame", {
             BackgroundTransparency = 1,
             Position = UDim2.new(0.75, 0, 0.05, 0),
-            Size = UDim2.new(0, 280, 1, -40),
+            Size = UDim2.new(0, 300, 1, -40),
             Parent = self.ScreenGui,
         })
         
@@ -274,10 +304,9 @@ function Zilk:Notify(Title, Message, Duration, Color)
         Parent = self.NotifContainer,
     })
     
+    self:AddCorner(Notif, 6)
+    self:AddStroke(Notif, Color or self.AccentColor, 1.5)
     self:AddToRegistry(Notif, { BackgroundColor3 = "MainColor" })
-    
-    local Corner = self:Create("UICorner", { CornerRadius = UDim.new(0, 6), Parent = Notif })
-    local Stroke = self:Create("UIStroke", { Color = Color or self.AccentColor, Thickness = 1.5, Parent = Notif })
     
     local TitleLabel = self:CreateLabel({
         Position = UDim2.new(0, 10, 0, 8),
@@ -288,6 +317,8 @@ function Zilk:Notify(Title, Message, Duration, Color)
         TextColor3 = Color or self.AccentColor,
         Parent = Notif,
     })
+    
+    self:AddToRegistry(TitleLabel, { TextColor3 = "AccentColor" })
     
     local MsgLabel = self:CreateLabel({
         Position = UDim2.new(0, 10, 0, 32),
@@ -329,18 +360,19 @@ function Zilk:CreateWatermark(Text)
         BorderColor3 = self.AccentColor,
         BorderMode = Enum.BorderMode.Inset,
         Position = UDim2.new(0.01, 0, 0.01, 0),
-        Size = UDim2.new(0, 150, 0, 24),
+        Size = UDim2.new(0, 180, 0, 24),
         Parent = self.ScreenGui,
     })
     
+    self:AddCorner(Watermark, 4)
     self:AddToRegistry(Watermark, {
         BackgroundColor3 = "MainColor",
         BorderColor3 = "AccentColor",
     })
     
     local Label = self:CreateLabel({
-        Size = UDim2.new(1, -4, 1, 0),
-        Position = UDim2.new(0, 4, 0, 0),
+        Size = UDim2.new(1, -6, 1, 0),
+        Position = UDim2.new(0, 6, 0, 0),
         Text = Text,
         TextSize = 12,
         Parent = Watermark,
@@ -348,13 +380,20 @@ function Zilk:CreateWatermark(Text)
     
     self:MakeDraggable(Watermark, 24)
     self.Watermark = Watermark
+    self.WatermarkLabel = Label
     
     return Label
 end
 
 function Zilk:UpdateWatermark(Text)
-    if self.Watermark and self.Watermark:FindFirstChildOfClass("TextLabel") then
-        self.Watermark:FindFirstChildOfClass("TextLabel").Text = Text
+    if self.WatermarkLabel then
+        self.WatermarkLabel.Text = Text
+    end
+end
+
+function Zilk:SetWatermarkVisibility(Visible)
+    if self.Watermark then
+        self.Watermark.Visible = Visible
     end
 end
 
@@ -373,7 +412,6 @@ end
 function Zilk:GetAllSettings()
     local Settings = {}
     
-    -- Iterate through all toggles and options
     for Name, Toggle in pairs(Toggles) do
         if Toggle and Toggle.Value ~= nil then
             Settings[Name] = Toggle.Value
@@ -482,6 +520,11 @@ function Zilk:ListConfigs()
     return Configs
 end
 
+-- Give signal for cleanup
+function Zilk:GiveSignal(Signal)
+    table.insert(self.Signals, Signal)
+end
+
 -- ============================================================================
 -- WINDOW CREATION
 -- ============================================================================
@@ -489,10 +532,10 @@ end
 function Zilk:CreateWindow(Config)
     Config = Config or {}
     Config.Title = Config.Title or "Zilk Menu"
-    Config.Size = Config.Size or UDim2.new(0, 550, 0, 500)
+    Config.Size = Config.Size or UDim2.new(0, 600, 0, 550)
     Config.Center = Config.Center ~= false
     Config.AutoShow = Config.AutoShow == true
-    Config.TabPadding = Config.TabPadding or 5
+    Config.TabPadding = Config.TabPadding or 8
     Config.FadeTime = Config.FadeTime or 0.2
     
     local Window = {
@@ -511,78 +554,77 @@ function Zilk:CreateWindow(Config)
     })
     
     self:MakeDraggable(MainFrame, 30)
-    self:AddToRegistry(MainFrame, { BackgroundColor3 = "Black" })
+    self:AddCorner(MainFrame, 8)
+    self:AddStroke(MainFrame, self.AccentColor, 2)
     
     -- Inner frame
     local InnerFrame = self:Create("Frame", {
         BackgroundColor3 = self.MainColor,
-        BorderColor3 = self.AccentColor,
-        BorderMode = Enum.BorderMode.Inset,
+        BorderSizePixel = 0,
         Position = UDim2.new(0, 1, 0, 1),
         Size = UDim2.new(1, -2, 1, -2),
         Parent = MainFrame,
     })
     
-    self:AddToRegistry(InnerFrame, {
-        BackgroundColor3 = "MainColor",
-        BorderColor3 = "AccentColor",
-    })
+    self:AddCorner(InnerFrame, 7)
+    self:AddToRegistry(InnerFrame, { BackgroundColor3 = "MainColor" })
     
-    -- Title bar
+    -- Title bar (matching HeavN style)
     local TitleBar = self:Create("Frame", {
-        BackgroundColor3 = self.BackgroundColor,
+        BackgroundColor3 = self.SectionColor,
         BorderSizePixel = 0,
         Position = UDim2.new(0, 0, 0, 0),
-        Size = UDim2.new(1, 0, 0, 30),
+        Size = UDim2.new(1, 0, 0, 35),
         Parent = InnerFrame,
     })
     
-    self:AddToRegistry(TitleBar, { BackgroundColor3 = "BackgroundColor" })
+    self:AddCorner(TitleBar, 7)
+    self:AddToRegistry(TitleBar, { BackgroundColor3 = "SectionColor" })
     
+    -- Title text
     local TitleLabel = self:CreateLabel({
-        Position = UDim2.new(0, 10, 0, 0),
-        Size = UDim2.new(1, -20, 1, 0),
+        Position = UDim2.new(0, 15, 0, 0),
+        Size = UDim2.new(1, -30, 1, 0),
         Text = Config.Title,
-        TextSize = 16,
+        TextSize = 18,
         Font = self.FontBold,
+        TextXAlignment = Enum.TextXAlignment.Center,
         Parent = TitleBar,
     })
     
-    -- Tab area
-    local TabArea = self:Create("Frame", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 8, 0, 35),
-        Size = UDim2.new(1, -16, 0, 25),
+    -- Tab area (left sidebar style like HeavN)
+    local TabContainer = self:Create("Frame", {
+        BackgroundColor3 = self.SectionColor,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 0, 0, 35),
+        Size = UDim2.new(0, 100, 1, -35),
         Parent = InnerFrame,
     })
+    
+    self:AddCorner(TabContainer, 7)
+    self:AddToRegistry(TabContainer, { BackgroundColor3 = "SectionColor" })
     
     local TabLayout = self:Create("UIListLayout", {
-        FillDirection = Enum.FillDirection.Horizontal,
-        Padding = UDim.new(0, Config.TabPadding),
+        FillDirection = Enum.FillDirection.Vertical,
+        Padding = UDim.new(0, 8),
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
         SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = TabArea,
+        Parent = TabContainer,
     })
     
-    -- Content container
+    -- Content area
     local ContentContainer = self:Create("Frame", {
-        BackgroundColor3 = self.BackgroundColor,
-        BorderColor3 = self.OutlineColor,
-        Position = UDim2.new(0, 8, 0, 65),
-        Size = UDim2.new(1, -16, 1, -73),
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 105, 0, 40),
+        Size = UDim2.new(1, -115, 1, -50),
         Parent = InnerFrame,
-    })
-    
-    self:AddToRegistry(ContentContainer, {
-        BackgroundColor3 = "BackgroundColor",
-        BorderColor3 = "OutlineColor",
     })
     
     -- Content scrolling frame
     local ContentScrolling = self:Create("ScrollingFrame", {
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Size = UDim2.new(1, -2, 1, -2),
-        Position = UDim2.new(0, 1, 0, 1),
+        Size = UDim2.new(1, 0, 1, 0),
         CanvasSize = UDim2.new(0, 0, 0, 0),
         ScrollBarThickness = 3,
         ScrollBarImageColor3 = self.AccentColor,
@@ -591,16 +633,28 @@ function Zilk:CreateWindow(Config)
     
     self:AddToRegistry(ContentScrolling, { ScrollBarImageColor3 = "AccentColor" })
     
-    local ContentLayout = self:Create("UIListLayout", {
-        FillDirection = Enum.FillDirection.Vertical,
-        Padding = UDim.new(0, 8),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = ContentScrolling,
-    })
-    
-    ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        ContentScrolling.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 10)
-    end)
+    -- Two column layout
+    local function CreateColumn(Parent, Side)
+        local Column = self:Create("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0.49, 0, 1, 0),
+            Position = Side == "Left" and UDim2.new(0, 0, 0, 0) or UDim2.new(0.51, 0, 0, 0),
+            Parent = Parent,
+        })
+        
+        local Layout = self:Create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Vertical,
+            Padding = UDim.new(0, 10),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = Column,
+        })
+        
+        Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            Parent.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
+        end)
+        
+        return Column, Layout
+    end
     
     local function ShowTab(TabName)
         for Name, Tab in pairs(Window.Tabs) do
@@ -613,8 +667,8 @@ function Zilk:CreateWindow(Config)
             else
                 Tab.Container.Visible = false
                 if Tab.Button then
-                    Tab.Button.BackgroundColor3 = self.BackgroundColor
-                    self:AddToRegistry(Tab.Button, { BackgroundColor3 = "BackgroundColor" })
+                    Tab.Button.BackgroundColor3 = self.SectionColor
+                    self:AddToRegistry(Tab.Button, { BackgroundColor3 = "SectionColor" })
                 end
             end
         end
@@ -625,21 +679,21 @@ function Zilk:CreateWindow(Config)
         local Tab = {
             Name = Name,
             Elements = {},
-            Containers = {Left = {}, Right = {}},
         }
         
-        -- Tab button
+        -- Tab button (sidebar style)
         local Button = self:Create("TextButton", {
-            BackgroundColor3 = #Window.Tabs == 0 and self.MainColor or self.BackgroundColor,
-            Text = Name,
+            BackgroundColor3 = #Window.Tabs == 0 and self.MainColor or self.SectionColor,
             TextColor3 = self.FontColor,
-            Font = self.Font,
+            Font = self.FontBold,
             TextSize = 13,
-            Size = UDim2.new(0, GetTextBounds(Name, self.Font, 13) + 20, 1, 0),
+            Size = UDim2.new(0.9, 0, 0, 32),
+            Text = Name,
             BorderSizePixel = 0,
-            Parent = TabArea,
+            Parent = TabContainer,
         })
         
+        self:AddCorner(Button, 6)
         self:AddToRegistry(Button, {
             BackgroundColor3 = "MainColor",
             TextColor3 = "FontColor",
@@ -659,7 +713,7 @@ function Zilk:CreateWindow(Config)
             ShowTab(Name)
         end)
         
-        -- Tab container
+        -- Tab content container
         local Container = self:Create("Frame", {
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 1, 0),
@@ -667,34 +721,9 @@ function Zilk:CreateWindow(Config)
             Parent = ContentScrolling,
         })
         
-        -- Left column
-        local LeftColumn = self:Create("Frame", {
-            BackgroundTransparency = 1,
-            Size = UDim2.new(0.5, -4, 1, 0),
-            Parent = Container,
-        })
-        
-        local LeftLayout = self:Create("UIListLayout", {
-            FillDirection = Enum.FillDirection.Vertical,
-            Padding = UDim.new(0, 8),
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = LeftColumn,
-        })
-        
-        -- Right column
-        local RightColumn = self:Create("Frame", {
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0.5, 4, 0, 0),
-            Size = UDim2.new(0.5, -4, 1, 0),
-            Parent = Container,
-        })
-        
-        local RightLayout = self:Create("UIListLayout", {
-            FillDirection = Enum.FillDirection.Vertical,
-            Padding = UDim.new(0, 8),
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = RightColumn,
-        })
+        -- Create left and right columns
+        local LeftColumn, LeftLayout = CreateColumn(Container, "Left")
+        local RightColumn, RightLayout = CreateColumn(Container, "Right")
         
         Tab.Button = Button
         Tab.Container = Container
@@ -707,47 +736,52 @@ function Zilk:CreateWindow(Config)
         return Tab
     end
     
-    -- Add groupbox
-    function Window:AddGroupbox(Parent, Title, Side)
-        local Tab = Parent
-        local Column = (Side == "Right") and Tab.RightColumn or Tab.LeftColumn
+    -- Add groupbox (matching HeavN style)
+    function Window:AddGroupbox(Page, Title, Side)
+        local Tab = Page
+        local Column = (Side == "Right" or Side == "right") and Tab.RightColumn or Tab.LeftColumn
         
         local Groupbox = self:Create("Frame", {
             BackgroundColor3 = self.BackgroundColor,
-            BorderColor3 = self.OutlineColor,
-            BorderMode = Enum.BorderMode.Inset,
+            BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 40),
             Parent = Column,
         })
         
+        self:AddCorner(Groupbox, 6)
+        self:AddStroke(Groupbox, self.OutlineColor, 1)
         self:AddToRegistry(Groupbox, {
             BackgroundColor3 = "BackgroundColor",
-            BorderColor3 = "OutlineColor",
         })
+        
+        table.insert(self.UIReferences.groupBoxes, Groupbox)
         
         -- Header
         local Header = self:Create("Frame", {
-            BackgroundColor3 = self.MainColor,
+            BackgroundColor3 = self.SectionColor,
             BorderSizePixel = 0,
-            Size = UDim2.new(1, 0, 0, 22),
+            Size = UDim2.new(1, 0, 0, 28),
             Parent = Groupbox,
         })
         
-        self:AddToRegistry(Header, { BackgroundColor3 = "MainColor" })
+        self:AddCorner(Header, 6)
+        self:AddToRegistry(Header, { BackgroundColor3 = "SectionColor" })
         
-        local HeaderLine = self:Create("Frame", {
+        -- Accent line
+        local AccentLine = self:Create("Frame", {
             BackgroundColor3 = self.AccentColor,
             BorderSizePixel = 0,
             Position = UDim2.new(0, 0, 1, -1),
-            Size = UDim2.new(1, 0, 0, 1),
+            Size = UDim2.new(1, 0, 0, 2),
             Parent = Header,
         })
         
-        self:AddToRegistry(HeaderLine, { BackgroundColor3 = "AccentColor" })
+        self:AddToRegistry(AccentLine, { BackgroundColor3 = "AccentColor" })
         
+        -- Title
         local TitleLabel = self:CreateLabel({
-            Position = UDim2.new(0, 10, 0, 0),
-            Size = UDim2.new(1, -20, 1, 0),
+            Position = UDim2.new(0, 12, 0, 0),
+            Size = UDim2.new(1, -24, 1, 0),
             Text = Title:upper(),
             TextSize = 11,
             Font = self.FontBold,
@@ -760,20 +794,20 @@ function Zilk:CreateWindow(Config)
         -- Content container
         local Content = self:Create("Frame", {
             BackgroundTransparency = 1,
-            Position = UDim2.new(0, 8, 0, 28),
-            Size = UDim2.new(1, -16, 0, 0),
+            Position = UDim2.new(0, 12, 0, 34),
+            Size = UDim2.new(1, -24, 0, 0),
             Parent = Groupbox,
         })
         
         local ContentLayout = self:Create("UIListLayout", {
             FillDirection = Enum.FillDirection.Vertical,
-            Padding = UDim.new(0, 6),
+            Padding = UDim.new(0, 8),
             SortOrder = Enum.SortOrder.LayoutOrder,
             Parent = Content,
         })
         
         local function Resize()
-            Groupbox.Size = UDim2.new(1, 0, 0, ContentLayout.AbsoluteContentSize.Y + 34)
+            Groupbox.Size = UDim2.new(1, 0, 0, ContentLayout.AbsoluteContentSize.Y + 42)
         end
         
         ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(Resize)
@@ -786,13 +820,13 @@ function Zilk:CreateWindow(Config)
     end
     
     -- ========================================================================
-    -- UI ELEMENTS
+    -- UI ELEMENTS (matching HeavN/Blade style)
     -- ========================================================================
     
     -- Add label
     function Window:AddLabel(Groupbox, Text, Wrapped)
         local Label = self:CreateLabel({
-            Size = UDim2.new(1, 0, 0, Wrapped and 0 or 18),
+            Size = UDim2.new(1, 0, 0, Wrapped and 0 or 20),
             Text = Text,
             TextSize = 12,
             TextWrapped = Wrapped or false,
@@ -800,8 +834,8 @@ function Zilk:CreateWindow(Config)
         })
         
         if Wrapped then
-            local X, Y = GetTextBounds(Text, self.Font, 12, Groupbox.Content.AbsoluteSize)
-            Label.Size = UDim2.new(1, 0, 0, Y + 4)
+            local X, Y = GetTextBounds(Text, self.Font, 12)
+            Label.Size = UDim2.new(1, 0, 0, Y + 6)
         end
         
         return Label
@@ -820,17 +854,18 @@ function Zilk:CreateWindow(Config)
         self:AddToRegistry(Divider, { BackgroundColor3 = "AccentColor" })
     end
     
-    -- Add toggle
+    -- Add toggle (matching HeavN style)
     function Window:AddToggle(Groupbox, Index, Config)
         local Toggle = {
             Value = Config.Default or false,
             Type = "Toggle",
+            Risky = Config.Risky or false,
             Callback = Config.Callback or function() end,
         }
         
         local Container = self:Create("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 28),
+            Size = UDim2.new(1, 0, 0, 32),
             Parent = Groupbox.Content,
         })
         
@@ -838,35 +873,40 @@ function Zilk:CreateWindow(Config)
             Size = UDim2.new(1, -50, 1, 0),
             Text = Config.Text,
             TextSize = 13,
+            TextColor3 = Toggle.Risky and self.DangerColor or self.FontColor,
             Parent = Container,
         })
+        
+        if Toggle.Risky then
+            self:AddToRegistry(Label, { TextColor3 = "DangerColor" })
+        end
         
         local Track = self:Create("Frame", {
-            BackgroundColor3 = Toggle.Value and self.AccentColor or self.OutlineColor,
-            Size = UDim2.new(0, 36, 0, 18),
-            Position = UDim2.new(1, -36, 0.5, -9),
+            BackgroundColor3 = Toggle.Value and self.AccentColor or self.ToggleOffColor,
+            Size = UDim2.new(0, 38, 0, 20),
+            Position = UDim2.new(1, -38, 0.5, -10),
             Parent = Container,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = Track })
+        self:AddCorner(Track, 10)
         
         local Knob = self:Create("Frame", {
-            BackgroundColor3 = Color3.new(1, 1, 1),
-            Size = UDim2.new(0, 14, 0, 14),
-            Position = UDim2.new(Toggle.Value and 1 or 0, Toggle.Value and -16 or 2, 0.5, -7),
+            BackgroundColor3 = self.ToggleOnColor,
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(Toggle.Value and 1 or 0, Toggle.Value and -18 or 2, 0.5, -8),
             Parent = Track,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = Knob })
+        self:AddCorner(Knob, 8)
         
         if Config.Tooltip then
             self:AddTooltip(Config.Tooltip, Container)
         end
         
         local function UpdateDisplay()
-            Track.BackgroundColor3 = Toggle.Value and self.AccentColor or self.OutlineColor
+            Track.BackgroundColor3 = Toggle.Value and self.AccentColor or self.ToggleOffColor
             TweenService:Create(Knob, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Position = UDim2.new(Toggle.Value and 1 or 0, Toggle.Value and -16 or 2, 0.5, -7)
+                Position = UDim2.new(Toggle.Value and 1 or 0, Toggle.Value and -18 or 2, 0.5, -8)
             }):Play()
         end
         
@@ -883,18 +923,19 @@ function Zilk:CreateWindow(Config)
         end
         
         Container.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 and not self:IsAnyFrameOpen() then
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Zilk:IsAnyFrameOpen() then
                 Toggle:SetValue(not Toggle.Value)
             end
         end)
         
         UpdateDisplay()
         Toggles[Index] = Toggle
+        Zilk.UIReferences.toggles[Index] = Toggle
         
         return Toggle
     end
     
-    -- Add slider
+    -- Add slider (matching HeavN style)
     function Window:AddSlider(Groupbox, Index, Config)
         local Slider = {
             Value = Config.Default or Config.Min,
@@ -906,13 +947,13 @@ function Zilk:CreateWindow(Config)
         
         local Container = self:Create("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 50),
+            Size = UDim2.new(1, 0, 0, 55),
             Parent = Groupbox.Content,
         })
         
         local Label = self:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 0, 0, 20),
+            Size = UDim2.new(1, 0, 0, 22),
             Text = string.format("%s: %s", Config.Text or "Slider", tostring(Slider.Value)),
             TextSize = 12,
             Parent = Container,
@@ -921,32 +962,42 @@ function Zilk:CreateWindow(Config)
         local Track = self:Create("Frame", {
             BackgroundColor3 = self.OutlineColor,
             Position = UDim2.new(0, 0, 0, 28),
-            Size = UDim2.new(1, 0, 0, 6),
+            Size = UDim2.new(1, 0, 0, 8),
             Parent = Container,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = Track })
+        self:AddCorner(Track, 4)
         
         local Fill = self:Create("Frame", {
-            BackgroundColor3 = self.AccentColor,
+            BackgroundColor3 = self.SliderColor,
             Size = UDim2.new((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), 0, 1, 0),
             Parent = Track,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = Fill })
-        self:AddToRegistry(Fill, { BackgroundColor3 = "AccentColor" })
+        self:AddCorner(Fill, 4)
+        self:AddToRegistry(Fill, { BackgroundColor3 = "SliderColor" })
         
         local Knob = self:Create("Frame", {
-            BackgroundColor3 = Color3.new(1, 1, 1),
-            Position = UDim2.new((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), -6, 0.5, -6),
-            Size = UDim2.new(0, 12, 0, 12),
+            BackgroundColor3 = self.ToggleOnColor,
+            Position = UDim2.new((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), -7, 0.5, -7),
+            Size = UDim2.new(0, 14, 0, 14),
             Parent = Track,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = Knob })
+        self:AddCorner(Knob, 7)
+        
+        -- Value display
+        local ValueLabel = self:CreateLabel({
+            Position = UDim2.new(1, -50, 0, 28),
+            Size = UDim2.new(0, 45, 0, 22),
+            Text = tostring(Slider.Value),
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Right,
+            Parent = Container,
+        })
         
         if Config.Tooltip then
-            self:AddTooltip(Config.Tooltip, Container)
+            Zilk:AddTooltip(Config.Tooltip, Container)
         end
         
         local dragging = false
@@ -967,8 +1018,9 @@ function Zilk:CreateWindow(Config)
                 Slider.Value = Value
                 local relVal = (Value - Slider.Min) / (Slider.Max - Slider.Min)
                 Fill.Size = UDim2.new(relVal, 0, 1, 0)
-                Knob.Position = UDim2.new(relVal, -6, 0.5, -6)
+                Knob.Position = UDim2.new(relVal, -7, 0.5, -7)
                 Label.Text = string.format("%s: %s", Config.Text or "Slider", tostring(Value))
+                ValueLabel.Text = tostring(Value)
                 Slider.Callback(Value)
             end
         end
@@ -998,8 +1050,9 @@ function Zilk:CreateWindow(Config)
             Slider.Value = Value
             local rel = (Value - Slider.Min) / (Slider.Max - Slider.Min)
             Fill.Size = UDim2.new(rel, 0, 1, 0)
-            Knob.Position = UDim2.new(rel, -6, 0.5, -6)
+            Knob.Position = UDim2.new(rel, -7, 0.5, -7)
             Label.Text = string.format("%s: %s", Config.Text or "Slider", tostring(Value))
+            ValueLabel.Text = tostring(Value)
             Slider.Callback(Value)
         end
         
@@ -1012,12 +1065,13 @@ function Zilk:CreateWindow(Config)
         return Slider
     end
     
-    -- Add dropdown
+    -- Add dropdown (matching HeavN style with search)
     function Window:AddDropdown(Groupbox, Index, Config)
         local Dropdown = {
             Values = Config.Values or {},
             Value = Config.Default or (Config.Values and Config.Values[1]),
             Multi = Config.Multi or false,
+            SpecialType = Config.SpecialType,
             Callback = Config.Callback or function() end,
         }
         
@@ -1032,7 +1086,7 @@ function Zilk:CreateWindow(Config)
         
         local Container = self:Create("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 45),
+            Size = UDim2.new(1, 0, 0, 50),
             Parent = Groupbox.Content,
         })
         
@@ -1045,10 +1099,10 @@ function Zilk:CreateWindow(Config)
         })
         
         local Button = self:Create("TextButton", {
-            BackgroundColor3 = self.MainColor,
-            BorderColor3 = self.OutlineColor,
+            BackgroundColor3 = self.DropdownColor,
+            BorderSizePixel = 0,
             Position = UDim2.new(0, 0, 0, 22),
-            Size = UDim2.new(1, 0, 0, 20),
+            Size = UDim2.new(1, 0, 0, 26),
             Text = Dropdown.Multi and "Select" or tostring(Dropdown.Value),
             TextColor3 = self.FontColor,
             Font = self.Font,
@@ -1056,35 +1110,79 @@ function Zilk:CreateWindow(Config)
             Parent = Container,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = Button })
+        self:AddCorner(Button, 6)
         self:AddToRegistry(Button, {
-            BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
+            BackgroundColor3 = "DropdownColor",
             TextColor3 = "FontColor",
         })
         
+        -- Dropdown arrow
+        local Arrow = self:Create("ImageLabel", {
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://6031090079",
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(1, -22, 0.5, -8),
+            Parent = Button,
+        })
+        
         if Config.Tooltip then
-            self:AddTooltip(Config.Tooltip, Container)
+            Zilk:AddTooltip(Config.Tooltip, Container)
         end
         
+        -- Dropdown list frame
         local ListFrame = self:Create("Frame", {
             BackgroundColor3 = self.MainColor,
-            BorderColor3 = self.OutlineColor,
+            BorderColor3 = self.AccentColor,
+            BorderMode = Enum.BorderMode.Inset,
             Visible = false,
             ZIndex = 100,
-            Parent = self.ScreenGui,
+            Parent = Zilk.ScreenGui,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = ListFrame })
+        self:AddCorner(ListFrame, 6)
         self:AddToRegistry(ListFrame, {
             BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
+            BorderColor3 = "AccentColor",
         })
         
-        local ListLayout = self:Create("UIListLayout", {
+        -- Search box for dropdown
+        local SearchBox = self:Create("TextBox", {
+            BackgroundColor3 = self.BackgroundColor,
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, -10, 0, 26),
+            Position = UDim2.new(0, 5, 0, 5),
+            PlaceholderText = "Search...",
+            Text = "",
+            TextColor3 = self.FontColor,
+            Font = self.Font,
+            TextSize = 12,
+            ClearTextOnFocus = false,
+            Parent = ListFrame,
+        })
+        
+        self:AddCorner(SearchBox, 4)
+        self:AddToRegistry(SearchBox, {
+            BackgroundColor3 = "BackgroundColor",
+            TextColor3 = "FontColor",
+        })
+        
+        -- Scrolling frame for items
+        local ScrollFrame = self:Create("ScrollingFrame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 5, 0, 36),
+            Size = UDim2.new(1, -10, 1, -46),
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            ScrollBarThickness = 3,
+            ScrollBarImageColor3 = self.AccentColor,
+            Parent = ListFrame,
+        })
+        
+        self:AddToRegistry(ScrollFrame, { ScrollBarImageColor3 = "AccentColor" })
+        
+        local ItemLayout = self:Create("UIListLayout", {
             FillDirection = Enum.FillDirection.Vertical,
             SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = ListFrame,
+            Parent = ScrollFrame,
         })
         
         local function UpdateButtonText()
@@ -1101,84 +1199,97 @@ function Zilk:CreateWindow(Config)
             end
         end
         
-        local function RebuildList()
-            for _, child in ipairs(ListFrame:GetChildren()) do
+        local function RebuildList(SearchText)
+            for _, child in ipairs(ScrollFrame:GetChildren()) do
                 if child:IsA("TextButton") then
                     child:Destroy()
                 end
             end
             
+            local SearchLower = (SearchText or ""):lower()
             local ListHeight = 0
+            local ItemCount = 0
             
             for _, Value in ipairs(Dropdown.Values) do
-                local IsSelected = Dropdown.Multi and Dropdown.Value[Value] or Dropdown.Value == Value
-                
-                local Item = self:Create("TextButton", {
-                    BackgroundColor3 = self.BackgroundColor,
-                    Text = Value,
-                    TextColor3 = IsSelected and self.AccentColor or self.FontColor,
-                    Font = self.Font,
-                    TextSize = 12,
-                    Size = UDim2.new(1, 0, 0, 25),
-                    Parent = ListFrame,
-                })
-                
-                self:AddToRegistry(Item, {
-                    BackgroundColor3 = "BackgroundColor",
-                    TextColor3 = "FontColor",
-                })
-                
-                ListHeight = ListHeight + 25
-                
-                Item.MouseEnter:Connect(function()
-                    Item.BackgroundColor3 = GetLighterColor(self.BackgroundColor)
-                end)
-                
-                Item.MouseLeave:Connect(function()
-                    Item.BackgroundColor3 = self.BackgroundColor
-                end)
-                
-                Item.MouseButton1Click:Connect(function()
-                    if Dropdown.Multi then
-                        Dropdown.Value[Value] = not Dropdown.Value[Value]
-                        Item.TextColor3 = Dropdown.Value[Value] and self.AccentColor or self.FontColor
-                        UpdateButtonText()
-                        Dropdown.Callback(Dropdown.Value)
-                    else
-                        Dropdown.Value = Value
-                        UpdateButtonText()
-                        ListFrame.Visible = false
-                        self.OpenedFrames[ListFrame] = nil
-                        Dropdown.Callback(Value)
-                        
-                        for _, child in ipairs(ListFrame:GetChildren()) do
-                            if child:IsA("TextButton") then
-                                child.TextColor3 = child.Text == Value and self.AccentColor or self.FontColor
+                if SearchLower == "" or string.lower(tostring(Value)):find(SearchLower, 1, true) then
+                    local IsSelected = Dropdown.Multi and Dropdown.Value[Value] or Dropdown.Value == Value
+                    
+                    local Item = self:Create("TextButton", {
+                        BackgroundColor3 = self.BackgroundColor,
+                        Text = Value,
+                        TextColor3 = IsSelected and self.AccentColor or self.FontColor,
+                        Font = self.Font,
+                        TextSize = 12,
+                        Size = UDim2.new(1, 0, 0, 28),
+                        Parent = ScrollFrame,
+                    })
+                    
+                    self:AddToRegistry(Item, {
+                        BackgroundColor3 = "BackgroundColor",
+                        TextColor3 = "FontColor",
+                    })
+                    
+                    ItemCount = ItemCount + 1
+                    ListHeight = ListHeight + 28
+                    
+                    Item.MouseEnter:Connect(function()
+                        Item.BackgroundColor3 = GetLighterColor(self.BackgroundColor)
+                    end)
+                    
+                    Item.MouseLeave:Connect(function()
+                        Item.BackgroundColor3 = self.BackgroundColor
+                    end)
+                    
+                    Item.MouseButton1Click:Connect(function()
+                        if Dropdown.Multi then
+                            Dropdown.Value[Value] = not Dropdown.Value[Value]
+                            Item.TextColor3 = Dropdown.Value[Value] and self.AccentColor or self.FontColor
+                            UpdateButtonText()
+                            Dropdown.Callback(Dropdown.Value)
+                        else
+                            Dropdown.Value = Value
+                            UpdateButtonText()
+                            ListFrame.Visible = false
+                            Zilk.OpenedFrames[ListFrame] = nil
+                            Dropdown.Callback(Value)
+                            
+                            for _, child in ipairs(ScrollFrame:GetChildren()) do
+                                if child:IsA("TextButton") then
+                                    child.TextColor3 = child.Text == Value and self.AccentColor or self.FontColor
+                                end
                             end
                         end
-                    end
-                end)
+                    end)
+                end
             end
             
-            ListFrame.Size = UDim2.new(0, Button.AbsoluteSize.X, 0, math.min(ListHeight, 150))
+            local MaxHeight = math.min(ListHeight, 200)
+            ListFrame.Size = UDim2.new(0, Button.AbsoluteSize.X, 0, MaxHeight + 46)
+            ScrollFrame.Size = UDim2.new(1, -10, 1, -46)
+            ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListHeight)
         end
+        
+        SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            RebuildList(SearchBox.Text)
+        end)
         
         Button.MouseButton1Click:Connect(function()
             if ListFrame.Visible then
                 ListFrame.Visible = false
-                self.OpenedFrames[ListFrame] = nil
+                Zilk.OpenedFrames[ListFrame] = nil
             else
-                for Frame, _ in pairs(self.OpenedFrames) do
+                for Frame, _ in pairs(Zilk.OpenedFrames) do
                     if Frame and Frame.Parent then
                         Frame.Visible = false
                     end
                 end
-                self.OpenedFrames = {}
+                Zilk.OpenedFrames = {}
                 
                 ListFrame.Position = UDim2.new(0, Button.AbsolutePosition.X, 0, Button.AbsolutePosition.Y + Button.AbsoluteSize.Y)
-                RebuildList()
+                SearchBox.Text = ""
+                RebuildList("")
                 ListFrame.Visible = true
-                self.OpenedFrames[ListFrame] = true
+                Zilk.OpenedFrames[ListFrame] = true
             end
         end)
         
@@ -1191,7 +1302,7 @@ function Zilk:CreateWindow(Config)
                 if not (mousePos.X >= framePos.X and mousePos.X <= framePos.X + frameSize.X and
                         mousePos.Y >= framePos.Y and mousePos.Y <= framePos.Y + frameSize.Y) then
                     ListFrame.Visible = false
-                    self.OpenedFrames[ListFrame] = nil
+                    Zilk.OpenedFrames[ListFrame] = nil
                 end
             end
         end)
@@ -1220,6 +1331,7 @@ function Zilk:CreateWindow(Config)
         
         UpdateButtonText()
         Options[Index] = Dropdown
+        Zilk.UIReferences.dropdowns[Index] = Dropdown
         
         return Dropdown
     end
@@ -1234,7 +1346,7 @@ function Zilk:CreateWindow(Config)
         
         local Container = self:Create("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 45),
+            Size = UDim2.new(1, 0, 0, 50),
             Parent = Groupbox.Content,
         })
         
@@ -1247,10 +1359,10 @@ function Zilk:CreateWindow(Config)
         })
         
         local TextBox = self:Create("TextBox", {
-            BackgroundColor3 = self.MainColor,
-            BorderColor3 = self.OutlineColor,
+            BackgroundColor3 = self.DropdownColor,
+            BorderSizePixel = 0,
             Position = UDim2.new(0, 0, 0, 22),
-            Size = UDim2.new(1, 0, 0, 20),
+            Size = UDim2.new(1, 0, 0, 26),
             Text = Input.Value,
             TextColor3 = self.FontColor,
             Font = self.Font,
@@ -1260,15 +1372,14 @@ function Zilk:CreateWindow(Config)
             Parent = Container,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = TextBox })
+        self:AddCorner(TextBox, 6)
         self:AddToRegistry(TextBox, {
-            BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
+            BackgroundColor3 = "DropdownColor",
             TextColor3 = "FontColor",
         })
         
         if Config.Tooltip then
-            self:AddTooltip(Config.Tooltip, Container)
+            Zilk:AddTooltip(Config.Tooltip, Container)
         end
         
         local function UpdateValue()
@@ -1308,9 +1419,9 @@ function Zilk:CreateWindow(Config)
     -- Add button
     function Window:AddButton(Groupbox, Config)
         local Button = self:Create("TextButton", {
-            BackgroundColor3 = self.ButtonColor or self.MainColor,
-            BorderColor3 = self.OutlineColor,
-            Size = UDim2.new(1, 0, 0, 30),
+            BackgroundColor3 = self.ButtonColor,
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, 0, 0, 32),
             Text = Config.Text or "Button",
             TextColor3 = self.FontColor,
             Font = self.FontBold,
@@ -1318,22 +1429,40 @@ function Zilk:CreateWindow(Config)
             Parent = Groupbox.Content,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = Button })
+        self:AddCorner(Button, 6)
         self:AddToRegistry(Button, {
-            BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
+            BackgroundColor3 = "ButtonColor",
             TextColor3 = "FontColor",
         })
         
         if Config.Tooltip then
-            self:AddTooltip(Config.Tooltip, Button)
+            Zilk:AddTooltip(Config.Tooltip, Button)
         end
         
-        Button.MouseButton1Click:Connect(function()
-            if Config.Func then
-                Config.Func()
-            end
-        end)
+        if Config.DoubleClick then
+            local ClickCount = 0
+            local ClickTimer = nil
+            
+            Button.MouseButton1Click:Connect(function()
+                ClickCount = ClickCount + 1
+                
+                if ClickTimer then
+                    task.cancel(ClickTimer)
+                end
+                
+                ClickTimer = task.delay(0.5, function()
+                    if ClickCount >= 2 then
+                        if Config.Func then Config.Func() end
+                    end
+                    ClickCount = 0
+                    ClickTimer = nil
+                end)
+            end)
+        else
+            Button.MouseButton1Click:Connect(function()
+                if Config.Func then Config.Func() end
+            end)
+        end
         
         return Button
     end
@@ -1348,12 +1477,12 @@ function Zilk:CreateWindow(Config)
         
         local Container = self:Create("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 30),
+            Size = UDim2.new(1, 0, 0, 32),
             Parent = Groupbox.Content,
         })
         
         local Label = self:CreateLabel({
-            Size = UDim2.new(1, -40, 1, 0),
+            Size = UDim2.new(1, -50, 1, 0),
             Text = Config.Text or "Color",
             TextSize = 13,
             Parent = Container,
@@ -1361,33 +1490,106 @@ function Zilk:CreateWindow(Config)
         
         local Preview = self:Create("Frame", {
             BackgroundColor3 = ColorPicker.Value,
-            BorderColor3 = self.OutlineColor,
-            Size = UDim2.new(0, 30, 0, 20),
-            Position = UDim2.new(1, -30, 0.5, -10),
+            BorderSizePixel = 0,
+            Size = UDim2.new(0, 40, 0, 24),
+            Position = UDim2.new(1, -40, 0.5, -12),
             Parent = Container,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = Preview })
-        self:AddToRegistry(Preview, {
-            BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
-        })
+        self:AddCorner(Preview, 6)
+        self:AddToRegistry(Preview, { BackgroundColor3 = "MainColor" })
+        
+        Zilk.UIReferences.colorPreviews[Index] = Preview
         
         if Config.Tooltip then
-            self:AddTooltip(Config.Tooltip, Container)
+            Zilk:AddTooltip(Config.Tooltip, Container)
         end
         
-        local H, S, V = Color3.toHSV(ColorPicker.Value)
-        
-        local function UpdatePreview()
-            Preview.BackgroundColor3 = ColorPicker.Value
-            ColorPicker.Callback(ColorPicker.Value, ColorPicker.Transparency)
+        -- Simple color picker popup
+        local function ShowColorPicker()
+            -- Close any open color picker
+            if Zilk.ScreenGui:FindFirstChild("ColorPickerPopup") then
+                Zilk.ScreenGui.ColorPickerPopup:Destroy()
+            end
+            
+            local Popup = self:Create("Frame", {
+                BackgroundColor3 = self.MainColor,
+                BorderColor3 = self.AccentColor,
+                BorderMode = Enum.BorderMode.Inset,
+                Position = UDim2.new(0, Preview.AbsolutePosition.X, 0, Preview.AbsolutePosition.Y + Preview.AbsoluteSize.Y),
+                Size = UDim2.new(0, 200, 0, 200),
+                Visible = true,
+                ZIndex = 1000,
+                Parent = Zilk.ScreenGui,
+            })
+            
+            self:AddCorner(Popup, 6)
+            self:AddToRegistry(Popup, {
+                BackgroundColor3 = "MainColor",
+                BorderColor3 = "AccentColor",
+            })
+            
+            Zilk.OpenedFrames[Popup] = true
+            
+            -- Simple color presets
+            local Colors = {
+                Color3.new(1, 0, 0), Color3.new(0, 1, 0), Color3.new(0, 0, 1),
+                Color3.new(1, 1, 0), Color3.new(1, 0, 1), Color3.new(0, 1, 1),
+                Color3.new(1, 1, 1), Color3.new(0, 0, 0), ColorPicker.Value
+            }
+            
+            local ColorLayout = self:Create("UIListLayout", {
+                FillDirection = Enum.FillDirection.Horizontal,
+                Padding = UDim.new(0, 5),
+                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                Parent = Popup,
+            })
+            
+            for _, Color in ipairs(Colors) do
+                local ColorBtn = self:Create("TextButton", {
+                    BackgroundColor3 = Color,
+                    Size = UDim2.new(0, 30, 0, 30),
+                    Text = "",
+                    Parent = Popup,
+                })
+                
+                self:AddCorner(ColorBtn, 4)
+                
+                ColorBtn.MouseButton1Click:Connect(function()
+                    ColorPicker.Value = Color
+                    Preview.BackgroundColor3 = Color
+                    ColorPicker.Callback(Color, ColorPicker.Transparency)
+                    Popup:Destroy()
+                    Zilk.OpenedFrames[Popup] = nil
+                end)
+            end
+            
+            -- Close picker when clicking outside
+            local function ClosePicker(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+                    local popupPos = Popup.AbsolutePosition
+                    local popupSize = Popup.AbsoluteSize
+                    
+                    if not (mousePos.X >= popupPos.X and mousePos.X <= popupPos.X + popupSize.X and
+                            mousePos.Y >= popupPos.Y and mousePos.Y <= popupPos.Y + popupSize.Y) then
+                        Popup:Destroy()
+                        Zilk.OpenedFrames[Popup] = nil
+                        connection:Disconnect()
+                    end
+                end
+            end
+            
+            local connection = UserInputService.InputBegan:Connect(ClosePicker)
         end
+        
+        Preview.MouseButton1Click:Connect(ShowColorPicker)
         
         function ColorPicker:SetValueRGB(Color, Transparency)
             ColorPicker.Value = Color
             ColorPicker.Transparency = Transparency or 0
-            UpdatePreview()
+            Preview.BackgroundColor3 = Color
+            ColorPicker.Callback(Color, ColorPicker.Transparency)
         end
         
         function ColorPicker:OnChanged(Callback)
@@ -1395,6 +1597,7 @@ function Zilk:CreateWindow(Config)
         end
         
         Options[Index] = ColorPicker
+        
         return ColorPicker
     end
     
@@ -1409,7 +1612,7 @@ function Zilk:CreateWindow(Config)
         
         local Container = self:Create("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 30),
+            Size = UDim2.new(1, 0, 0, 32),
             Parent = Groupbox.Content,
         })
         
@@ -1421,26 +1624,25 @@ function Zilk:CreateWindow(Config)
         })
         
         local Button = self:Create("TextButton", {
-            BackgroundColor3 = self.MainColor,
-            BorderColor3 = self.OutlineColor,
-            Size = UDim2.new(0, 60, 0, 20),
-            Position = UDim2.new(1, -60, 0.5, -10),
+            BackgroundColor3 = self.ButtonColor,
+            BorderSizePixel = 0,
+            Size = UDim2.new(0, 70, 0, 24),
+            Position = UDim2.new(1, -70, 0.5, -12),
             Text = KeyPicker.Value,
             TextColor3 = self.FontColor,
-            Font = self.Font,
+            Font = self.FontBold,
             TextSize = 11,
             Parent = Container,
         })
         
-        self:Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = Button })
+        self:AddCorner(Button, 6)
         self:AddToRegistry(Button, {
-            BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
+            BackgroundColor3 = "ButtonColor",
             TextColor3 = "FontColor",
         })
         
         if Config.Tooltip then
-            self:AddTooltip(Config.Tooltip, Container)
+            Zilk:AddTooltip(Config.Tooltip, Container)
         end
         
         local function GetKeyName(Input)
@@ -1455,10 +1657,12 @@ function Zilk:CreateWindow(Config)
         end
         
         local Listening = false
+        local ListenConnection = nil
         
         Button.MouseButton1Click:Connect(function()
             if Listening then
                 Listening = false
+                if ListenConnection then ListenConnection:Disconnect() end
                 Button.Text = KeyPicker.Value
                 return
             end
@@ -1466,8 +1670,7 @@ function Zilk:CreateWindow(Config)
             Listening = true
             Button.Text = "..."
             
-            local Connection
-            Connection = UserInputService.InputBegan:Connect(function(Input, Processed)
+            ListenConnection = UserInputService.InputBegan:Connect(function(Input, Processed)
                 if Processed then return end
                 
                 local Key = GetKeyName(Input)
@@ -1476,15 +1679,15 @@ function Zilk:CreateWindow(Config)
                     Button.Text = Key
                     KeyPicker.Value = Key
                     KeyPicker.ChangedCallback(Key)
-                    Connection:Disconnect()
+                    ListenConnection:Disconnect()
                 end
             end)
             
             task.delay(5, function()
                 if Listening then
                     Listening = false
+                    if ListenConnection then ListenConnection:Disconnect() end
                     Button.Text = KeyPicker.Value
-                    if Connection then Connection:Disconnect() end
                 end
             end)
         end)
@@ -1508,6 +1711,7 @@ function Zilk:CreateWindow(Config)
         end
         
         Options[Index] = KeyPicker
+        Zilk.UIReferences.keybinds[Index] = KeyPicker
         
         return KeyPicker
     end
@@ -1528,7 +1732,7 @@ function Zilk:CreateWindow(Config)
         
         local Layout = self:Create("UIListLayout", {
             FillDirection = Enum.FillDirection.Vertical,
-            Padding = UDim.new(0, 6),
+            Padding = UDim.new(0, 8),
             SortOrder = Enum.SortOrder.LayoutOrder,
             Parent = Depbox.Container,
         })
@@ -1555,24 +1759,40 @@ function Zilk:CreateWindow(Config)
             return Window:AddDependencyBox(Depbox)
         end
         
-        Depbox.AddToggle = function(self, ...)
-            return Window:AddToggle(Depbox, ...)
+        Depbox.AddToggle = function(self, Index, Config)
+            return Window:AddToggle(Depbox, Index, Config)
         end
         
-        Depbox.AddSlider = function(self, ...)
-            return Window:AddSlider(Depbox, ...)
+        Depbox.AddSlider = function(self, Index, Config)
+            return Window:AddSlider(Depbox, Index, Config)
         end
         
-        Depbox.AddDropdown = function(self, ...)
-            return Window:AddDropdown(Depbox, ...)
+        Depbox.AddDropdown = function(self, Index, Config)
+            return Window:AddDropdown(Depbox, Index, Config)
         end
         
-        Depbox.AddLabel = function(self, ...)
-            return Window:AddLabel(Depbox, ...)
+        Depbox.AddLabel = function(self, Text, Wrapped)
+            return Window:AddLabel(Depbox, Text, Wrapped)
         end
         
-        Depbox.AddButton = function(self, ...)
-            return Window:AddButton(Depbox, ...)
+        Depbox.AddButton = function(self, Config)
+            return Window:AddButton(Depbox, Config)
+        end
+        
+        Depbox.AddInput = function(self, Index, Config)
+            return Window:AddInput(Depbox, Index, Config)
+        end
+        
+        Depbox.AddColorPicker = function(self, Index, Config)
+            return Window:AddColorPicker(Depbox, Index, Config)
+        end
+        
+        Depbox.AddKeyPicker = function(self, Index, Config)
+            return Window:AddKeyPicker(Depbox, Index, Config)
+        end
+        
+        Depbox.AddDivider = function(self)
+            return Window:AddDivider(Depbox)
         end
         
         setmetatable(Depbox, {
@@ -1600,21 +1820,17 @@ function Zilk:CreateWindow(Config)
         
         local FadeTime = Config.FadeTime
         
-        for _, Desc in ipairs(MainFrame:GetDescendants()) do
-            if Desc:IsA("Frame") or Desc:IsA("ScrollingFrame") then
-                TweenService:Create(Desc, TweenInfo.new(FadeTime), {
-                    BackgroundTransparency = MenuVisible and 0 or 1
-                }):Play()
-            elseif Desc:IsA("TextLabel") or Desc:IsA("TextButton") or Desc:IsA("TextBox") then
-                TweenService:Create(Desc, TweenInfo.new(FadeTime), {
-                    TextTransparency = MenuVisible and 0 or 1
-                }):Play()
-            end
-        end
-        
-        task.wait(FadeTime)
-        
-        if not MenuVisible then
+        if MenuVisible then
+            MainFrame.Visible = true
+            MainFrame.BackgroundTransparency = 1
+            TweenService:Create(MainFrame, TweenInfo.new(FadeTime), {
+                BackgroundTransparency = 0
+            }):Play()
+        else
+            TweenService:Create(MainFrame, TweenInfo.new(FadeTime), {
+                BackgroundTransparency = 1
+            }):Play()
+            task.wait(FadeTime)
             MainFrame.Visible = false
         end
         
@@ -1633,6 +1849,8 @@ function Zilk:CreateWindow(Config)
                 elseif Keybind.EnumType == Enum.UserInputType then
                     Matches = Input.UserInputType == Keybind
                 end
+            elseif type(Keybind) == "string" then
+                Matches = Input.KeyCode and Input.KeyCode.Name == Keybind
             end
             
             if Matches then
@@ -1643,19 +1861,13 @@ function Zilk:CreateWindow(Config)
     
     -- Unload function
     function Window:Unload()
-        self:Notify("ZilkLib", "Unloading menu...", 1)
-        task.wait(0.5)
-        MainFrame:Destroy()
+        Zilk:Unload()
     end
     
     return Window
 end
 
--- Add unload signal
-function Zilk:OnUnload(Callback)
-    self.UnloadCallback = Callback
-end
-
+-- Unload everything
 function Zilk:Unload()
     for _, Signal in ipairs(self.Signals) do
         Signal:Disconnect()
@@ -1666,6 +1878,11 @@ function Zilk:Unload()
     end
     
     self.ScreenGui:Destroy()
+    getgenv().Zilk = nil
+end
+
+function Zilk:OnUnload(Callback)
+    self.UnloadCallback = Callback
 end
 
 -- Exports
