@@ -1438,15 +1438,23 @@ function Zilk:CreateWindow(Config)
     
     -- Add button
     function Window:AddButton(Groupbox, Config)
+        -- A shared row frame holds both the primary button and any sub-button side-by-side.
+        -- This frame is what gets parented to Groupbox.Content (a plain Frame, not an Instance).
+        local RowFrame = lib:New("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 32),
+            Parent = Groupbox.Content,
+        })
+
         local Button = lib:New("TextButton", {
             BackgroundColor3 = lib.ButtonColor,
             BorderSizePixel = 0,
-            Size = UDim2.new(1, 0, 0, 32),
+            Size = UDim2.new(1, 0, 1, 0),
             Text = Config.Text or "Button",
             TextColor3 = lib.FontColor,
             Font = lib.FontBold,
             TextSize = 13,
-            Parent = Groupbox.Content,
+            Parent = RowFrame,
         })
         
         lib:AddCorner(Button, 6)
@@ -1484,21 +1492,25 @@ function Zilk:CreateWindow(Config)
             end)
         end
         
-        -- Support for sub-buttons
-        function Button:AddButton(SubConfig)
-            local Outer = self.Parent
-            self.Size = UDim2.new(0.5, -2, 0, 32)
-            
+        -- Return a Lua wrapper table so :AddButton() can be stored as a plain method.
+        -- (Roblox Instances do not support arbitrary method assignment.)
+        local ButtonWrapper = { Frame = RowFrame, Button = Button }
+
+        function ButtonWrapper:AddButton(SubConfig)
+            -- Shrink the primary button to the left half of the row frame
+            Button.Size = UDim2.new(0.5, -2, 1, 0)
+            Button.Position = UDim2.new(0, 0, 0, 0)
+
             local SubButton = lib:New("TextButton", {
                 BackgroundColor3 = lib.ButtonColor,
                 BorderSizePixel = 0,
-                Size = UDim2.new(1, 0, 0, 32),
-                Position = UDim2.new(1, 4, 0, 0),
+                Size = UDim2.new(0.5, -2, 1, 0),
+                Position = UDim2.new(0.5, 2, 0, 0),
                 Text = SubConfig.Text or "Sub",
                 TextColor3 = lib.FontColor,
                 Font = lib.FontBold,
                 TextSize = 13,
-                Parent = self,
+                Parent = RowFrame,  -- sibling of Button inside the shared row frame
             })
             
             lib:AddCorner(SubButton, 6)
@@ -1518,7 +1530,7 @@ function Zilk:CreateWindow(Config)
             return SubButton
         end
         
-        return Button
+        return ButtonWrapper
     end
     
     -- Add color picker
