@@ -651,8 +651,12 @@ function Zilk:CreateWindow(Config)
             Parent = Column,
         })
         
+        -- CanvasSize must be set on the ScrollingFrame, not on the plain Frame container
         Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            Parent.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
+            local newHeight = Layout.AbsoluteContentSize.Y + 10
+            if ContentScrolling.CanvasSize.Y.Offset < newHeight then
+                ContentScrolling.CanvasSize = UDim2.new(0, 0, 0, newHeight)
+            end
         end)
         
         return Column, Layout
@@ -739,25 +743,25 @@ function Zilk:CreateWindow(Config)
         local Tab = Page
         local Column = (Side == "Right" or Side == "right") and Tab.RightColumn or Tab.LeftColumn
         
-        local Groupbox = lib:New("Frame", {
+        local GroupboxFrame = lib:New("Frame", {
             BackgroundColor3 = lib.BackgroundColor,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 40),
             Parent = Column,
         })
         
-        lib:AddCorner(Groupbox, 6)
-        lib:AddStroke(Groupbox, lib.OutlineColor, 1)
-        lib:AddToRegistry(Groupbox, { BackgroundColor3 = "BackgroundColor" })
+        lib:AddCorner(GroupboxFrame, 6)
+        lib:AddStroke(GroupboxFrame, lib.OutlineColor, 1)
+        lib:AddToRegistry(GroupboxFrame, { BackgroundColor3 = "BackgroundColor" })
         
-        table.insert(lib.UIReferences.groupBoxes, Groupbox)
+        table.insert(lib.UIReferences.groupBoxes, GroupboxFrame)
         
         -- Header
         local Header = lib:New("Frame", {
             BackgroundColor3 = lib.SectionColor,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 28),
-            Parent = Groupbox,
+            Parent = GroupboxFrame,
         })
         
         lib:AddCorner(Header, 6)
@@ -792,7 +796,7 @@ function Zilk:CreateWindow(Config)
             BackgroundTransparency = 1,
             Position = UDim2.new(0, 12, 0, 34),
             Size = UDim2.new(1, -24, 0, 0),
-            Parent = Groupbox,
+            Parent = GroupboxFrame,
         })
         
         local ContentLayout = lib:New("UIListLayout", {
@@ -803,13 +807,18 @@ function Zilk:CreateWindow(Config)
         })
         
         local function Resize()
-            Groupbox.Size = UDim2.new(1, 0, 0, ContentLayout.AbsoluteContentSize.Y + 42)
+            GroupboxFrame.Size = UDim2.new(1, 0, 0, ContentLayout.AbsoluteContentSize.Y + 42)
         end
         
         ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(Resize)
         Resize()
         
-        Groupbox.Content = Content
+        -- Return a Lua wrapper table so .Content can be stored as a plain field
+        -- (Roblox Instances do not support arbitrary property assignment)
+        local Groupbox = {
+            Frame = GroupboxFrame,
+            Content = Content,
+        }
         return Groupbox
     end
     
