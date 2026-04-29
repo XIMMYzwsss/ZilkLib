@@ -349,7 +349,7 @@ local function BuildKeybindFrame(zilk)
         Text      = "KEYBINDS",
         TextColor3= zilk.AccentColor,
         Font      = zilk.FontBold,
-        TextSize  = 11,
+        TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent    = f,
     })
@@ -359,9 +359,9 @@ local function BuildKeybindFrame(zilk)
         Size     = UDim2.new(1, 0, 0, 0),
         Parent   = f,
     })
-    ListLayout(list, Enum.FillDirection.Vertical, 2)
-    list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        f.Size = UDim2.new(0, 160, 0, 26 + list.AbsoluteContentSize.Y)
+    local layout = ListLayout(list, Enum.FillDirection.Vertical, 2)
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        f.Size = UDim2.new(0, 160, 0, 26 + layout.AbsoluteContentSize.Y)
     end)
     zilk.KeybindFrame = f
     zilk._keybindList  = list
@@ -1418,11 +1418,6 @@ local function MakeTab(lib, scrollLeft, scrollRight)
         return tbxAPI
     end
     function tabAPI:AddRightTabbox()
-        local tbxAPI = tabAPI:AddLeftTabbox()
-        -- rebuild on right — we just re-use left logic, column is already correct
-        -- (the AddLeftTabbox above appended to scrollLeft; we need scrollRight)
-        -- So override: remove that last frame from scrollLeft and re-add to scrollRight
-        -- Simplest: just build directly
         local tbFrame = New("Frame", {
             BackgroundColor3=lib.BackgroundColor, Size=UDim2.new(1,0,0,40), Parent=scrollRight,
         })
@@ -1462,13 +1457,6 @@ local function MakeTab(lib, scrollLeft, scrollRight)
                 page.Visible=true; tabBtn.BackgroundTransparency=0
             end)
             return MakeGroupboxAPI(lib, page)
-        end
-        -- Remove the incorrectly-placed frame from scrollLeft (the one tbxAPI built)
-        -- tbxAPI's frame is the last child of scrollLeft
-        for _, c in ipairs(scrollLeft:GetChildren()) do
-            if c:IsA("Frame") and c ~= scrollLeft:FindFirstChildWhichIsA("UIListLayout") then
-                -- We don't actually need to remove it; the rTbx one is on scrollRight
-            end
         end
         return rTbx
     end
@@ -1583,7 +1571,7 @@ local function BuildConfigTab(lib, tabAPI, saveMgr)
     local listLabel = right:AddLabel("No configs saved yet.", false)
     local configBtns = {}
 
-    function RefreshConfigList()
+    local function RefreshConfigList()
         for _, b in ipairs(configBtns) do
             if b._row and b._row.Parent then b._row:Destroy() end
         end
@@ -1847,11 +1835,11 @@ function Zilk:CreateWindow(cfg)
         rightLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvas)
 
         local entry = { btn = tabBtn, page = page, left = leftCol, right = rightCol }
-        table.insert(self._pages, entry)
-        self.Tabs[name] = entry
+        table.insert(Window._pages, entry)
+        Window.Tabs[name] = entry
 
         -- Activate first tab automatically
-        if #self._pages == 1 then
+        if #Window._pages == 1 then
             ActivateTab(entry)
         end
 
