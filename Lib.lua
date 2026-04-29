@@ -90,7 +90,8 @@ function Zilk:CreateWindow(options)
         Parent = RunService:IsStudio() and game.Players.LocalPlayer:WaitForChild("PlayerGui") or CoreGui,
         ResetOnSpawn = false,
         DisplayOrder = 100,
-        IgnoreGuiInset = true
+        IgnoreGuiInset = true,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     })
     Zilk.UI = ScreenGui
 
@@ -315,6 +316,7 @@ function Zilk:CreateWindow(options)
                 TabFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(LeftList.AbsoluteContentSize.Y, RightList.AbsoluteContentSize.Y) + 20)
             end
             BoxList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateSize)
+            UpdateSize()
 
             function Groupbox:AddToggle(idx, opts)
                 local Toggle = { Value = opts.Default or false, Type = "Toggle" }
