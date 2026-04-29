@@ -30,6 +30,20 @@ local function Create(cls, props)
     return inst
 end
 
+function Zilk:SetFolder(folder)
+    self.ConfigFolder = folder
+    local buildPath = ""
+    for pathPart in string.gmatch(folder, "[^/\\]+") do
+        buildPath = buildPath .. pathPart .. "/"
+        if not isfolder(buildPath) then
+            makefolder(buildPath)
+        end
+    end
+    if self.Options and self.Options.ConfigList then
+        self.Options.ConfigList:SetValues(self:GetConfigs())
+    end
+end
+
 function Zilk:SaveConfig(name)
     local save = { Toggles = {}, Options = {} }
     for i, v in pairs(self.Toggles) do save.Toggles[i] = v.Value end
@@ -38,7 +52,7 @@ function Zilk:SaveConfig(name)
             save.Options[i] = v.Value 
         end
     end
-    if not isfolder(self.ConfigFolder) then makefolder(self.ConfigFolder) end
+    self:SetFolder(self.ConfigFolder)
     writefile(self.ConfigFolder .. "/" .. name .. ".json", HttpService:JSONEncode(save))
 end
 
@@ -58,6 +72,7 @@ function Zilk:LoadConfig(name)
 end
 
 function Zilk:GetConfigs()
+    if not isfolder(self.ConfigFolder) then self:SetFolder(self.ConfigFolder) end
     if not isfolder(self.ConfigFolder) then return {} end
     local files = listfiles(self.ConfigFolder)
     local names = {}
