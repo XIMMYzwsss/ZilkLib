@@ -124,14 +124,14 @@ function Zilk:CreateWindow(options)
         Parent = ScreenGui,
         Size = UDim2.new(0, 700, 0, 550),
         Position = UDim2.new(0.5, -350, 0.5, -275),
-        BackgroundColor3 = self.Theme.MainColor,
+        BackgroundColor3 = Zilk.Theme.MainColor,
         BorderSizePixel = 0,
         Active = true
     })
     Create("UICorner", {Parent = MainFrame, CornerRadius = UDim.new(0, 8)})
     local MainStroke = Create("UIStroke", {
         Parent = MainFrame,
-        Color = self.Theme.AccentColor,
+        Color = Zilk.Theme.AccentColor,
         Thickness = 2,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     })
@@ -141,7 +141,7 @@ function Zilk:CreateWindow(options)
         Name = "TitleBar",
         Parent = MainFrame,
         Size = UDim2.new(1, 0, 0, 35),
-        BackgroundColor3 = self.Theme.SectionColor,
+        BackgroundColor3 = Zilk.Theme.SectionColor,
         BorderSizePixel = 0,
         ZIndex = 2
     })
@@ -149,7 +149,7 @@ function Zilk:CreateWindow(options)
     Create("Frame", {
         Size = UDim2.new(1, 0, 0, 10),
         Position = UDim2.new(0, 0, 1, -10),
-        BackgroundColor3 = self.Theme.SectionColor,
+        BackgroundColor3 = Zilk.Theme.SectionColor,
         BorderSizePixel = 0,
         Parent = TitleBar,
         ZIndex = 2
@@ -162,7 +162,7 @@ function Zilk:CreateWindow(options)
         Position = UDim2.new(0, 15, 0, 0),
         BackgroundTransparency = 1,
         Text = Title,
-        TextColor3 = self.Theme.TextColor,
+        TextColor3 = Zilk.Theme.TextColor,
         Font = Enum.Font.GothamBold,
         TextSize = 16,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -196,7 +196,7 @@ function Zilk:CreateWindow(options)
         Parent = MainFrame,
         Size = UDim2.new(0, 110, 1, -35),
         Position = UDim2.new(0, 0, 0, 35),
-        BackgroundColor3 = self.Theme.SectionColor,
+        BackgroundColor3 = Zilk.Theme.SectionColor,
         BorderSizePixel = 0,
         ZIndex = 2
     })
@@ -212,7 +212,7 @@ function Zilk:CreateWindow(options)
     Create("Frame", {
         Name = "Line",
         Parent = MainFrame,
-        BackgroundColor3 = self.Theme.OutlineColor,
+        BackgroundColor3 = Zilk.Theme.OutlineColor,
         Size = UDim2.new(0, 1, 1, -35),
         Position = UDim2.new(0, 110, 0, 35),
         BorderSizePixel = 0,
@@ -240,9 +240,9 @@ function Zilk:CreateWindow(options)
             Name = name .. "Tab",
             Parent = TabContainer,
             Size = UDim2.new(0.9, 0, 0, 30),
-            BackgroundColor3 = self.Theme.SectionColor,
+            BackgroundColor3 = Zilk.Theme.SectionColor,
             Text = name,
-            TextColor3 = self.Theme.TextColor,
+            TextColor3 = Zilk.Theme.TextColor,
             Font = Enum.Font.GothamBold,
             TextSize = 13,
             BorderSizePixel = 0,
@@ -259,7 +259,7 @@ function Zilk:CreateWindow(options)
             BackgroundTransparency = 1,
             Visible = false,
             ScrollBarThickness = 2,
-            ScrollBarImageColor3 = self.Theme.AccentColor,
+            ScrollBarImageColor3 = Zilk.Theme.AccentColor,
             CanvasSize = UDim2.new(0, 0, 0, 0),
             ZIndex = 5,
             BorderSizePixel = 0
@@ -433,6 +433,8 @@ function Zilk:CreateWindow(options)
                     if opts.Callback then opts.Callback(val) end
                 end
 
+                function Toggle:OnChanged(cb) opts.Callback = cb end
+
                 Row.MouseButton1Click:Connect(function() Toggle:SetValue(not Toggle.Value) end)
                 Zilk.Toggles[idx] = Toggle
                 return Toggle
@@ -477,6 +479,10 @@ function Zilk:CreateWindow(options)
                     Label.Text = (opts.Text or idx) .. ": " .. val
                     if opts.Callback then opts.Callback(val) end
                 end
+
+                function Slider:OnChanged(cb) opts.Callback = cb end
+
+                function Slider:OnChanged(cb) opts.Callback = cb end
 
                 local dragging = false
                 local function Update()
@@ -609,6 +615,8 @@ function Zilk:CreateWindow(options)
                 })
                 Create("UICorner", {Parent = Btn, CornerRadius = UDim.new(0, 4)})
 
+                function Keybind:OnChanged(cb) opts.Callback = cb end
+
                 local picking = false
                 Btn.MouseButton1Click:Connect(function()
                     if picking then return end
@@ -704,6 +712,8 @@ function Zilk:CreateWindow(options)
                     if opts.Callback then opts.Callback(val) end
                 end
 
+                function ColorPicker:OnChanged(cb) opts.Callback = cb end
+
                 Zilk.Options[idx] = ColorPicker
                 return ColorPicker
             end
@@ -791,7 +801,7 @@ function Zilk:CreateWindow(options)
         Size = UDim2.new(1, 0, 0, 20),
         BackgroundTransparency = 1,
         Text = "Current: None",
-        TextColor3 = self.Theme.TextColor,
+        TextColor3 = Zilk.Theme.TextColor,
         Font = Enum.Font.Gotham,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -825,7 +835,7 @@ function Zilk:CreateWindow(options)
 
     local ConfigList = Configs:AddDropdown("ConfigList", {Text = "Config List", Values = Zilk:GetConfigs()})
 
-    CreateCfgBtn("Save", UDim2.new(0, 0, 0, 0), self.Theme.AccentColor, function()
+    CreateCfgBtn("Save", UDim2.new(0, 0, 0, 0), Zilk.Theme.AccentColor, function()
         local name = Zilk.Options.ConfigName.Value
         if name ~= "" then
             Zilk:SaveConfig(name)
@@ -839,7 +849,7 @@ function Zilk:CreateWindow(options)
         if name and name ~= "None" then
             Zilk:LoadConfig(name)
             StatusLabel.Text = "Current: " .. name .. " (Loaded)"
-            StatusLabel.TextColor3 = self.Theme.AccentColor
+            StatusLabel.TextColor3 = Zilk.Theme.AccentColor
         end
     end)
     CreateCfgBtn("Overwrite", UDim2.new(0.5, 4, 0, 0), Color3.fromRGB(255, 165, 0), function()
@@ -856,7 +866,7 @@ function Zilk:CreateWindow(options)
             Zilk:DeleteConfig(name)
             ConfigList:SetValues(Zilk:GetConfigs())
             StatusLabel.Text = "Current: None"
-            StatusLabel.TextColor3 = self.Theme.TextColor
+            StatusLabel.TextColor3 = Zilk.Theme.TextColor
         end
     end)
 
