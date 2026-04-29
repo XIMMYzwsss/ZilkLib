@@ -1287,36 +1287,63 @@ end
 -- ============================================================================
 local function BuildGroupbox(lib, parentColumn, title)
     local gbFrame = New("Frame", {
-        BackgroundColor3=lib.BackgroundColor, BorderSizePixel=0,
-        Size=UDim2.new(1,0,0,40), Parent=parentColumn,
+        BackgroundColor3 = lib.BackgroundColor,
+        BorderSizePixel  = 0,
+        Size             = UDim2.new(1, 0, 0, 36),
+        Parent           = parentColumn,
     })
     Corner(gbFrame, 6)
     Stroke(gbFrame, lib.OutlineColor)
 
     -- Header
     local header = New("Frame", {
-        BackgroundColor3=lib.SectionColor, Size=UDim2.new(1,0,0,28), Parent=gbFrame,
+        BackgroundColor3 = lib.SectionColor,
+        BorderSizePixel  = 0,
+        Size             = UDim2.new(1, 0, 0, 28),
+        Parent           = gbFrame,
     })
     Corner(header, 6)
+    -- flat bottom on header so it doesn't round into content
     New("Frame", {
-        BackgroundColor3=lib.AccentColor, Size=UDim2.new(1,0,0,2),
-        Position=UDim2.new(0,0,1,-2), Parent=header,
+        BackgroundColor3 = lib.SectionColor,
+        Size             = UDim2.new(1, 0, 0.5, 0),
+        Position         = UDim2.new(0, 0, 0.5, 0),
+        Parent           = header,
+    })
+    -- accent bottom line
+    New("Frame", {
+        BackgroundColor3 = lib.AccentColor,
+        Size             = UDim2.new(1, 0, 0, 1),
+        Position         = UDim2.new(0, 0, 1, -1),
+        Parent           = header,
     })
     New("TextLabel", {
-        BackgroundTransparency=1, Position=UDim2.new(0,12,0,0),
-        Size=UDim2.new(1,-24,1,0), Text=(title or ""):upper(),
-        TextColor3=lib.AccentColor, Font=lib.FontBold, TextSize=11,
-        TextXAlignment=Enum.TextXAlignment.Left, Parent=header,
+        BackgroundTransparency = 1,
+        Position   = UDim2.new(0, 10, 0, 0),
+        Size       = UDim2.new(1, -20, 1, 0),
+        Text       = (title or ""):upper(),
+        TextColor3 = lib.AccentColor,
+        Font       = lib.FontBold,
+        TextSize   = 11,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex     = 2,
+        Parent     = header,
     })
 
-    -- Content
+    -- Content container
     local content = New("Frame", {
-        BackgroundTransparency=1, Position=UDim2.new(0,10,0,34),
-        Size=UDim2.new(1,-20,0,0), Parent=gbFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 8, 0, 32),
+        Size     = UDim2.new(1, -16, 0, 0),
+        Parent   = gbFrame,
     })
     local layout = ListLayout(content, Enum.FillDirection.Vertical, 8)
+    Padding(content, 4, 0, 6, 0)
+
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        gbFrame.Size = UDim2.new(1,0,0, layout.AbsoluteContentSize.Y + 44)
+        local h = layout.AbsoluteContentSize.Y + 10
+        content.Size  = UDim2.new(1, -16, 0, h)
+        gbFrame.Size  = UDim2.new(1, 0, 0, 32 + h + 8)
     end)
 
     local api = MakeGroupboxAPI(lib, content)
@@ -1449,140 +1476,202 @@ local function MakeTab(lib, scrollLeft, scrollRight)
 end
 
 -- ============================================================================
--- SETTINGS TAB (built-in)
+-- SETTINGS TAB  — user calls ThemeManager:ApplyToTab(tab) to attach this
 -- ============================================================================
-local function BuildSettingsTab(lib, tabAPI, window)
-    local left  = tabAPI:AddLeftGroupbox("Interface")
-    local right = tabAPI:AddRightGroupbox("Menu")
+local function BuildSettingsTab(lib, tabAPI, specificBox)
+    local uiBox, menuBox
+    if specificBox then
+        uiBox   = specificBox
+        menuBox = specificBox
+    else
+        uiBox   = tabAPI:AddLeftGroupbox("UI Settings")
+        menuBox = tabAPI:AddRightGroupbox("Menu")
+    end
 
-    -- Accent colour
-    left:AddLabel("Accent Color"):AddColorPicker("ZilkAccentColor", {
+    uiBox:AddLabel("Accent Color"):AddColorPicker("ZilkAccentColor", {
         Default  = lib.AccentColor,
-        Callback = function(c)
-            lib.AccentColor = c
-            lib:ApplyTheme()
-        end,
+        Title    = "Accent Color",
+        Callback = function(c) lib.AccentColor = c; lib:ApplyTheme() end,
     })
 
-    -- Watermark toggle
-    left:AddToggle("ZilkWatermark", {
-        Text = "Show Watermark",
+    uiBox:AddDivider()
+
+    uiBox:AddToggle("ZilkWatermark", {
+        Text    = "Show Watermark",
         Default = false,
         Callback = function(v) lib:SetWatermarkVisibility(v) end,
     })
 
-    -- Keybind list toggle
-    left:AddToggle("ZilkKeybindList", {
-        Text = "Show Keybind List",
+    uiBox:AddToggle("ZilkKeybindList", {
+        Text    = "Show Keybind List",
         Default = true,
         Callback = function(v)
             if lib.KeybindFrame then lib.KeybindFrame.Visible = v end
         end,
     })
 
-    -- Menu key
-    right:AddLabel("Menu Keybind"):AddKeyPicker("ZilkMenuKey", {
-        Default = "RightShift",
-        Mode    = "Toggle",
-        NoUI    = true,
-        Text    = "Menu keybind",
+    uiBox:AddToggle("ZilkNotifications", {
+        Text    = "Show Notifications",
+        Default = true,
+        Callback = function(v) lib._notifEnabled = v end,
     })
 
-    -- Sync toggle keybind → menu
-    if Options.ZilkMenuKey then
-        lib.ToggleKeybind = Options.ZilkMenuKey
+    if not specificBox then
+        menuBox:AddLabel("Menu Keybind"):AddKeyPicker("ZilkMenuKey", {
+            Default = "RightShift",
+            Mode    = "Toggle",
+            NoUI    = true,
+            Text    = "Menu keybind",
+        })
+        task.defer(function()
+            if Options.ZilkMenuKey then lib.ToggleKeybind = Options.ZilkMenuKey end
+        end)
+        menuBox:AddDivider()
+        menuBox:AddButton({
+            Text = "Unload Menu",
+            Func = function() lib:Unload() end,
+        })
     end
-
-    right:AddDivider()
-    right:AddButton({
-        Text = "Unload",
-        Func = function() lib:Unload() end,
-    })
 end
 
 -- ============================================================================
--- CONFIG TAB (built-in)
+-- CONFIG TAB  — user calls SaveManager:BuildConfigSection(tab) to attach this
 -- ============================================================================
-local function BuildConfigTab(lib, tabAPI)
+local function BuildConfigTab(lib, tabAPI, saveMgr)
     local left  = tabAPI:AddLeftGroupbox("Config Manager")
     local right = tabAPI:AddRightGroupbox("Saved Configs")
 
-    local nameInput = left:AddInput("ZilkConfigName", {
+    left:AddInput("ZilkConfigName", {
         Text        = "Config Name",
         Placeholder = "Enter name...",
         Default     = "",
     })
 
-    left:AddButton({
-        Text = "Save Config",
+    left:AddButton({ Text = "Save Config",
         Func = function()
             local n = Options.ZilkConfigName and Options.ZilkConfigName.Value or ""
-            if n ~= "" then lib:SaveConfig(n)
-            else lib:Notify("Config", "Enter a config name first", 2, lib.DangerColor) end
-        end,
-    })
+            if n ~= "" then lib:SaveConfig(n) else lib:Notify("Config","Enter a config name",2,lib.DangerColor) end
+        end })
 
-    left:AddButton({
-        Text = "Load Config",
+    left:AddButton({ Text = "Load Config",
         Func = function()
             local n = Options.ZilkConfigName and Options.ZilkConfigName.Value or ""
-            if n ~= "" then lib:LoadConfig(n)
-            else lib:Notify("Config", "Enter a config name first", 2, lib.DangerColor) end
-        end,
-    })
+            if n ~= "" then lib:LoadConfig(n) else lib:Notify("Config","Enter a config name",2,lib.DangerColor) end
+        end })
 
-    left:AddButton({
-        Text = "Delete Config",
+    left:AddButton({ Text = "Delete Config",
         Func = function()
             local n = Options.ZilkConfigName and Options.ZilkConfigName.Value or ""
-            if n ~= "" then lib:DeleteConfig(n); BuildConfigList()
-            else lib:Notify("Config", "Enter a config name first", 2, lib.DangerColor) end
-        end,
-    })
+            if n ~= "" then
+                lib:DeleteConfig(n)
+                RefreshConfigList()
+            else lib:Notify("Config","Enter a config name",2,lib.DangerColor) end
+        end })
 
     left:AddDivider()
 
-    left:AddButton({
-        Text = "Set as Autoload",
+    left:AddButton({ Text = "Set as Autoload",
         Func = function()
             local n = Options.ZilkConfigName and Options.ZilkConfigName.Value or ""
             if n ~= "" then
                 lib:SetAutoload(n)
-                lib:Notify("Config", "Autoload set to: " .. n, 2, lib.AccentColor)
-            else lib:Notify("Config", "Enter a config name first", 2, lib.DangerColor) end
-        end,
-    })
+                lib:Notify("Config","Autoload set to: "..n,2,lib.AccentColor)
+            else lib:Notify("Config","Enter a config name",2,lib.DangerColor) end
+        end })
 
-    -- Config list (right column)
-    local function BuildConfigList()
-        -- Clear old buttons
-        for _, c in ipairs(right.Content:GetChildren()) do
-            if c:IsA("Frame") and c._configBtn then c:Destroy() end
+    -- Config list on the right
+    local listLabel = right:AddLabel("No configs saved yet.", false)
+    local configBtns = {}
+
+    function RefreshConfigList()
+        for _, b in ipairs(configBtns) do
+            if b._row and b._row.Parent then b._row:Destroy() end
         end
+        configBtns = {}
         local configs = lib:ListConfigs()
         if #configs == 0 then
-            right:AddLabel("No configs saved yet.", false)
+            listLabel._lbl.Text    = "No configs saved yet."
+            listLabel._lbl.Visible = true
         else
+            listLabel._lbl.Visible = false
             for _, name in ipairs(configs) do
-                local row = right.Content
-                local btn = Constructors.Button(lib, row, {
+                local b = Constructors.Button(lib, right.Content, {
                     Text = name,
                     Func = function()
                         if Options.ZilkConfigName then Options.ZilkConfigName:SetValue(name) end
                     end,
                 })
-                btn._configBtn = true
+                table.insert(configBtns, b)
             end
         end
     end
 
-    right:AddButton({
-        Text = "↺ Refresh List",
-        Func = function() BuildConfigList() end,
-    })
     right:AddDivider()
-    BuildConfigList()
+    right:AddButton({ Text = "↺ Refresh", Func = function() RefreshConfigList() end })
+    RefreshConfigList()
 end
+
+-- ============================================================================
+-- SAVE MANAGER  (Linoria pattern: SaveManager:SetLibrary / SetFolder / BuildConfigSection)
+-- ============================================================================
+local SaveManager = {}
+SaveManager.__index = SaveManager
+
+function SaveManager:SetLibrary(lib)
+    self._lib = lib
+end
+
+function SaveManager:SetFolder(path)
+    self._folder = path
+    if self._lib then
+        self._lib.ConfigFolder = path
+    end
+end
+
+function SaveManager:IgnoreThemeSettings()
+    self._ignoreTheme = true
+end
+
+function SaveManager:SetIgnoreIndexes(t)
+    self._ignoreIndexes = t or {}
+end
+
+function SaveManager:BuildConfigSection(tab)
+    if not self._lib then return end
+    BuildConfigTab(self._lib, tab, self)
+end
+
+function SaveManager:LoadAutoloadConfig()
+    if self._lib then self._lib:LoadAutoloadConfig() end
+end
+
+Zilk.SaveManager = SaveManager
+
+-- ============================================================================
+-- THEME MANAGER  (Linoria pattern: ThemeManager:SetLibrary / ApplyToTab)
+-- ============================================================================
+local ThemeManager = {}
+ThemeManager.__index = ThemeManager
+
+function ThemeManager:SetLibrary(lib)
+    self._lib = lib
+end
+
+function ThemeManager:SetFolder(path)
+    self._folder = path
+end
+
+function ThemeManager:ApplyToTab(tab)
+    if not self._lib then return end
+    BuildSettingsTab(self._lib, tab)
+end
+
+function ThemeManager:ApplyToGroupbox(box)
+    if not self._lib then return end
+    BuildSettingsTab(self._lib, nil, box)
+end
+
+Zilk.ThemeManager = ThemeManager
 
 -- ============================================================================
 -- CREATE WINDOW
@@ -1590,16 +1679,16 @@ end
 function Zilk:CreateWindow(cfg)
     cfg = cfg or {}
     cfg.Title      = cfg.Title    or "Zilk"
-    cfg.Size       = cfg.Size     or UDim2.new(0, 640, 0, 560)
+    cfg.Size       = cfg.Size     or UDim2.new(0, 660, 0, 560)
     cfg.Center     = cfg.Center   ~= false
     cfg.AutoShow   = cfg.AutoShow == true
     cfg.FadeTime   = cfg.FadeTime or 0.2
 
     local lib = self
 
-    -- Main frame
+    -- Outer border frame (accent coloured ring)
     local mainFrame = New("Frame", {
-        BackgroundColor3 = Color3.new(0,0,0),
+        BackgroundColor3 = lib.AccentColor,
         Size    = cfg.Size,
         Position = cfg.Center
             and UDim2.new(0.5, -cfg.Size.X.Offset/2, 0.5, -cfg.Size.Y.Offset/2)
@@ -1608,39 +1697,77 @@ function Zilk:CreateWindow(cfg)
         Parent  = ScreenGui,
     })
     Corner(mainFrame, 8)
-    Stroke(mainFrame, lib.AccentColor, 2)
-    self:MakeDraggable(mainFrame, 34)
+    self:MakeDraggable(mainFrame, 36)
 
-    local innerFrame = New("Frame", {
-        BackgroundColor3=lib.MainColor, Position=UDim2.new(0,1,0,1),
-        Size=UDim2.new(1,-2,1,-2), Parent=mainFrame,
+    -- Inner dark body
+    local body = New("Frame", {
+        BackgroundColor3 = lib.MainColor,
+        Position = UDim2.new(0, 1, 0, 1),
+        Size     = UDim2.new(1, -2, 1, -2),
+        Parent   = mainFrame,
     })
-    Corner(innerFrame, 7)
+    Corner(body, 7)
 
     -- Title bar
     local titleBar = New("Frame", {
-        BackgroundColor3=lib.SectionColor, Size=UDim2.new(1,0,0,34), Parent=innerFrame,
+        BackgroundColor3 = lib.SectionColor,
+        Size     = UDim2.new(1, 0, 0, 36),
+        Parent   = body,
     })
     Corner(titleBar, 7)
+    -- bottom corners of title bar should be square (clip with body)
+    New("Frame", {
+        BackgroundColor3 = lib.SectionColor,
+        Position = UDim2.new(0, 0, 0.5, 0),
+        Size     = UDim2.new(1, 0, 0.5, 0),
+        Parent   = titleBar,
+    })
     New("TextLabel", {
-        BackgroundTransparency=1, Size=UDim2.new(1,-20,1,0), Position=UDim2.new(0,10,0,0),
-        Text=cfg.Title, TextColor3=lib.FontColor, Font=lib.FontBold, TextSize=17,
-        TextXAlignment=Enum.TextXAlignment.Left, Parent=titleBar,
+        BackgroundTransparency = 1,
+        Position   = UDim2.new(0, 12, 0, 0),
+        Size       = UDim2.new(1, -24, 1, 0),
+        Text       = cfg.Title,
+        TextColor3 = lib.FontColor,
+        Font       = lib.FontBold,
+        TextSize   = 16,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex     = 2,
+        Parent     = titleBar,
     })
 
-    -- Tab sidebar
+    -- Sidebar (left tab strip)
     local sidebar = New("Frame", {
-        BackgroundColor3=lib.SectionColor, Size=UDim2.new(0,110,1,-34),
-        Position=UDim2.new(0,0,0,34), Parent=innerFrame,
+        BackgroundColor3 = lib.SectionColor,
+        Position = UDim2.new(0, 0, 0, 36),
+        Size     = UDim2.new(0, 112, 1, -36),
+        Parent   = body,
+    })
+    -- square top-right corner to merge with title bar
+    New("Frame", {
+        BackgroundColor3 = lib.SectionColor,
+        Position = UDim2.new(1, -8, 0, 0),
+        Size     = UDim2.new(0, 8, 0.1, 0),
+        Parent   = sidebar,
     })
     Corner(sidebar, 7)
-    local sideLayout = ListLayout(sidebar, Enum.FillDirection.Vertical, 6)
-    Padding(sidebar, 8, 6, 8, 6)
+    -- accent separator line between sidebar and content
+    New("Frame", {
+        BackgroundColor3 = lib.AccentColor,
+        Position = UDim2.new(1, -1, 0, 0),
+        Size     = UDim2.new(0, 1, 1, 0),
+        ZIndex   = 2,
+        Parent   = sidebar,
+    })
 
-    -- Content area
+    local sideLayout = ListLayout(sidebar, Enum.FillDirection.Vertical, 4)
+    Padding(sidebar, 10, 6, 8, 6)
+
+    -- Content area (right of sidebar)
     local contentArea = New("Frame", {
-        BackgroundTransparency=1, Position=UDim2.new(0,116,0,40),
-        Size=UDim2.new(1,-124,1,-48), Parent=innerFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 118, 0, 42),
+        Size     = UDim2.new(1, -126, 1, -50),
+        Parent   = body,
     })
 
     local Window = {
@@ -1648,64 +1775,90 @@ function Zilk:CreateWindow(cfg)
         _lib    = lib,
         _frame  = mainFrame,
         _pages  = {},
+        _sidebar = sidebar,
+        _contentArea = contentArea,
     }
     self._window = Window
 
+    local function ActivateTab(entry)
+        for _, e in ipairs(Window._pages) do
+            e.page.Visible = false
+            e.btn.BackgroundColor3      = Color3.fromRGB(0,0,0)
+            e.btn.BackgroundTransparency = 1
+            e.btn.TextColor3            = Color3.fromRGB(160,160,160)
+        end
+        entry.page.Visible              = true
+        entry.btn.BackgroundColor3      = lib.AccentColor
+        entry.btn.BackgroundTransparency = 0
+        entry.btn.TextColor3            = Color3.fromRGB(255,255,255)
+    end
+
     -- Add tab
     function Window:AddTab(name)
-        -- sidebar button
-        local isFirst = #self._pages == 0
         local tabBtn = New("TextButton", {
-            BackgroundColor3 = isFirst and lib.MainColor or lib.SectionColor,
-            Size=UDim2.new(1,0,0,30), Text=name,
-            TextColor3=lib.FontColor, Font=lib.FontBold, TextSize=12,
-            Parent=sidebar,
+            BackgroundColor3      = Color3.fromRGB(0,0,0),
+            BackgroundTransparency = 1,
+            Size       = UDim2.new(1, 0, 0, 28),
+            Text       = name,
+            TextColor3 = Color3.fromRGB(160,160,160),
+            Font       = lib.FontBold,
+            TextSize   = 12,
+            Parent     = sidebar,
         })
         Corner(tabBtn, 5)
 
-        -- Page (scrolls)
+        -- Page (scrolling)
         local page = New("ScrollingFrame", {
-            BackgroundTransparency=1, Size=UDim2.new(1,0,1,0),
-            CanvasSize=UDim2.new(0,0,0,0), ScrollBarThickness=3,
-            ScrollBarImageColor3=lib.AccentColor, Visible=isFirst,
-            Parent=contentArea,
+            BackgroundTransparency = 1,
+            Size                   = UDim2.new(1, 0, 1, 0),
+            CanvasSize             = UDim2.new(0, 0, 0, 0),
+            ScrollBarThickness     = 3,
+            ScrollBarImageColor3   = lib.AccentColor,
+            BorderSizePixel        = 0,
+            Visible                = false,
+            Parent                 = contentArea,
         })
 
-        -- Two columns inside page
+        -- Two columns
         local leftCol = New("Frame", {
-            BackgroundTransparency=1, Size=UDim2.new(0.49,0,0,0),
-            Position=UDim2.new(0,0,0,0), Parent=page,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 0, 0, 6),
+            Size     = UDim2.new(0.5, -5, 1, -6),
+            Parent   = page,
         })
         local rightCol = New("Frame", {
-            BackgroundTransparency=1, Size=UDim2.new(0.49,0,0,0),
-            Position=UDim2.new(0.51,0,0,0), Parent=page,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0.5, 5, 0, 6),
+            Size     = UDim2.new(0.5, -5, 1, -6),
+            Parent   = page,
         })
-        local leftLayout  = ListLayout(leftCol,  Enum.FillDirection.Vertical, 10)
-        local rightLayout = ListLayout(rightCol, Enum.FillDirection.Vertical, 10)
+
+        local leftLayout  = ListLayout(leftCol,  Enum.FillDirection.Vertical, 8)
+        local rightLayout = ListLayout(rightCol, Enum.FillDirection.Vertical, 8)
 
         local function UpdateCanvas()
-            local h = math.max(leftLayout.AbsoluteContentSize.Y, rightLayout.AbsoluteContentSize.Y) + 20
-            page.CanvasSize = UDim2.new(0,0,0,h)
-            leftCol.Size  = UDim2.new(0.49,0,0,h)
-            rightCol.Size = UDim2.new(0.49,0,0,h)
+            local h = math.max(
+                leftLayout.AbsoluteContentSize.Y,
+                rightLayout.AbsoluteContentSize.Y
+            ) + 20
+            page.CanvasSize = UDim2.new(0, 0, 0, h)
         end
         leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvas)
         rightLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvas)
 
-        local entry = { btn=tabBtn, page=page, left=leftCol, right=rightCol }
+        local entry = { btn = tabBtn, page = page, left = leftCol, right = rightCol }
         table.insert(self._pages, entry)
         self.Tabs[name] = entry
 
+        -- Activate first tab automatically
+        if #self._pages == 1 then
+            ActivateTab(entry)
+        end
+
         tabBtn.MouseButton1Click:Connect(function()
-            for _, e in ipairs(self._pages) do
-                e.page.Visible = false
-                e.btn.BackgroundColor3 = lib.SectionColor
-            end
-            page.Visible = true
-            tabBtn.BackgroundColor3 = lib.MainColor
+            ActivateTab(entry)
         end)
 
-        -- Tab API (matches Linoria: Tab:AddLeftGroupbox etc.)
         return MakeTab(lib, leftCol, rightCol)
     end
 
@@ -1714,42 +1867,36 @@ function Zilk:CreateWindow(cfg)
     local fading  = false
     local function ToggleMenu()
         if fading then return end
-        fading = true; menuVis = not menuVis
+        fading = true
+        menuVis = not menuVis
         if menuVis then
             mainFrame.Visible = true
             mainFrame.BackgroundTransparency = 1
             Tween(mainFrame, TweenInfo.new(cfg.FadeTime), { BackgroundTransparency = 0 })
         else
             Tween(mainFrame, TweenInfo.new(cfg.FadeTime), { BackgroundTransparency = 1 })
-            task.wait(cfg.FadeTime); mainFrame.Visible = false
+            task.wait(cfg.FadeTime)
+            mainFrame.Visible = false
         end
         fading = false
     end
 
-    -- Default RightShift toggle (overridable via ZilkMenuKey)
+    lib.ToggleMenu = ToggleMenu
+
     UIS.InputBegan:Connect(function(i, proc)
         if proc or lib.Unloaded then return end
         local toggle = lib.ToggleKeybind
         if toggle then
             local k = i.KeyCode and i.KeyCode.Name or ""
-            if k == (type(toggle.Value)=="string" and toggle.Value or "") then
-                ToggleMenu()
-            end
+            if k == tostring(toggle.Value) then ToggleMenu() end
         else
             if i.KeyCode == Enum.KeyCode.RightShift then ToggleMenu() end
         end
     end)
 
-    -- Build watermark + keybind frame
+    -- Build watermark + keybind HUD
     BuildWatermark(lib)
     BuildKeybindFrame(lib)
-
-    -- Append built-in Settings & Config tabs
-    local settingsTabAPI = Window:AddTab("Settings")
-    BuildSettingsTab(lib, settingsTabAPI, Window)
-
-    local configTabAPI = Window:AddTab("Config")
-    BuildConfigTab(lib, configTabAPI)
 
     return Window
 end
