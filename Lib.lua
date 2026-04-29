@@ -30,6 +30,8 @@ local Zilk = {
     CurrentConfig = "None"
 }
 
+local Theme = Zilk.Theme
+
 -- Utility Functions
 local function Create(cls, props)
     local inst = Instance.new(cls)
@@ -124,14 +126,14 @@ function Zilk:CreateWindow(options)
         Parent = ScreenGui,
         Size = UDim2.new(0, 700, 0, 550),
         Position = UDim2.new(0.5, -350, 0.5, -275),
-        BackgroundColor3 = Zilk.Theme.MainColor,
+        BackgroundColor3 = Theme.MainColor,
         BorderSizePixel = 0,
         Active = true
     })
     Create("UICorner", {Parent = MainFrame, CornerRadius = UDim.new(0, 8)})
     local MainStroke = Create("UIStroke", {
         Parent = MainFrame,
-        Color = Zilk.Theme.AccentColor,
+        Color = Theme.AccentColor,
         Thickness = 2,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     })
@@ -141,7 +143,7 @@ function Zilk:CreateWindow(options)
         Name = "TitleBar",
         Parent = MainFrame,
         Size = UDim2.new(1, 0, 0, 35),
-        BackgroundColor3 = Zilk.Theme.SectionColor,
+        BackgroundColor3 = Theme.SectionColor,
         BorderSizePixel = 0,
         ZIndex = 2
     })
@@ -149,7 +151,7 @@ function Zilk:CreateWindow(options)
     Create("Frame", {
         Size = UDim2.new(1, 0, 0, 10),
         Position = UDim2.new(0, 0, 1, -10),
-        BackgroundColor3 = Zilk.Theme.SectionColor,
+        BackgroundColor3 = Theme.SectionColor,
         BorderSizePixel = 0,
         Parent = TitleBar,
         ZIndex = 2
@@ -162,7 +164,7 @@ function Zilk:CreateWindow(options)
         Position = UDim2.new(0, 15, 0, 0),
         BackgroundTransparency = 1,
         Text = Title,
-        TextColor3 = Zilk.Theme.TextColor,
+        TextColor3 = Theme.TextColor,
         Font = Enum.Font.GothamBold,
         TextSize = 16,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -196,7 +198,7 @@ function Zilk:CreateWindow(options)
         Parent = MainFrame,
         Size = UDim2.new(0, 110, 1, -35),
         Position = UDim2.new(0, 0, 0, 35),
-        BackgroundColor3 = Zilk.Theme.SectionColor,
+        BackgroundColor3 = Theme.SectionColor,
         BorderSizePixel = 0,
         ZIndex = 2
     })
@@ -212,7 +214,7 @@ function Zilk:CreateWindow(options)
     Create("Frame", {
         Name = "Line",
         Parent = MainFrame,
-        BackgroundColor3 = Zilk.Theme.OutlineColor,
+        BackgroundColor3 = Theme.OutlineColor,
         Size = UDim2.new(0, 1, 1, -35),
         Position = UDim2.new(0, 110, 0, 35),
         BorderSizePixel = 0,
@@ -240,9 +242,9 @@ function Zilk:CreateWindow(options)
             Name = name .. "Tab",
             Parent = TabContainer,
             Size = UDim2.new(0.9, 0, 0, 30),
-            BackgroundColor3 = Zilk.Theme.SectionColor,
+            BackgroundColor3 = Theme.SectionColor,
             Text = name,
-            TextColor3 = Zilk.Theme.TextColor,
+            TextColor3 = Theme.TextColor,
             Font = Enum.Font.GothamBold,
             TextSize = 13,
             BorderSizePixel = 0,
@@ -259,7 +261,7 @@ function Zilk:CreateWindow(options)
             BackgroundTransparency = 1,
             Visible = false,
             ScrollBarThickness = 2,
-            ScrollBarImageColor3 = Zilk.Theme.AccentColor,
+            ScrollBarImageColor3 = Theme.AccentColor,
             CanvasSize = UDim2.new(0, 0, 0, 0),
             ZIndex = 5,
             BorderSizePixel = 0
@@ -297,12 +299,12 @@ function Zilk:CreateWindow(options)
         local function Select()
             for _, t in pairs(Zilk.Tabs) do
                 t.Page.Visible = false
-                t.Button.BackgroundColor3 = Zilk.Theme.SectionColor
+                t.Button.BackgroundColor3 = Theme.SectionColor
                 t.Button.TextColor3 = Color3.fromRGB(150, 150, 150)
             end
             Page.Visible = true
-            TabButton.BackgroundColor3 = Zilk.Theme.ButtonColor
-            TabButton.TextColor3 = Zilk.Theme.AccentColor
+            TabButton.BackgroundColor3 = Theme.ButtonColor
+            TabButton.TextColor3 = Theme.AccentColor
             Zilk.ActiveTab = Tab
         end
 
@@ -327,7 +329,7 @@ function Zilk:CreateWindow(options)
                 ZIndex = 6
             })
             Create("UICorner", {Parent = Box, CornerRadius = UDim.new(0, 4)})
-            Create("UIStroke", {Parent = Box, Color = Zilk.Theme.OutlineColor, Thickness = 1})
+            Create("UIStroke", {Parent = Box, Color = Theme.OutlineColor, Thickness = 1})
             
             local Header = Create("Frame", {
                 Parent = Box,
@@ -350,7 +352,7 @@ function Zilk:CreateWindow(options)
                 Parent = Header,
                 Size = UDim2.new(1, 0, 0, 1),
                 Position = UDim2.new(0, 0, 1, -1),
-                BackgroundColor3 = Zilk.Theme.AccentColor,
+                BackgroundColor3 = Theme.AccentColor,
                 BackgroundTransparency = 0.5,
                 BorderSizePixel = 0,
                 ZIndex = 8
@@ -362,7 +364,7 @@ function Zilk:CreateWindow(options)
                 Position = UDim2.new(0, 10, 0, 0),
                 BackgroundTransparency = 1,
                 Text = title:upper(),
-                TextColor3 = Zilk.Theme.AccentColor,
+                TextColor3 = Theme.AccentColor,
                 Font = Enum.Font.GothamBold,
                 TextSize = 10,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -398,7 +400,7 @@ function Zilk:CreateWindow(options)
                     Parent = Row,
                     Size = UDim2.new(0, 35, 0, 18),
                     Position = UDim2.new(1, -35, 0.5, -9),
-                    BackgroundColor3 = Toggle.Value and Zilk.Theme.AccentColor or Zilk.Theme.ToggleOffColor,
+                    BackgroundColor3 = Toggle.Value and Theme.AccentColor or Theme.ToggleOffColor,
                     ZIndex = 9
                 })
                 Create("UICorner", {Parent = Track, CornerRadius = UDim.new(1, 0)})
@@ -417,7 +419,7 @@ function Zilk:CreateWindow(options)
                     Size = UDim2.new(1, -45, 1, 0),
                     BackgroundTransparency = 1,
                     Text = opts.Text or idx,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -426,7 +428,7 @@ function Zilk:CreateWindow(options)
 
                 function Toggle:SetValue(val)
                     Toggle.Value = val
-                    TweenService:Create(Track, TweenInfo.new(0.15), {BackgroundColor3 = val and Zilk.Theme.AccentColor or Zilk.Theme.ToggleOffColor}):Play()
+                    TweenService:Create(Track, TweenInfo.new(0.15), {BackgroundColor3 = val and Theme.AccentColor or Theme.ToggleOffColor}):Play()
                     TweenService:Create(Knob, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
                         Position = val and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
                     }):Play()
@@ -448,7 +450,7 @@ function Zilk:CreateWindow(options)
                     Size = UDim2.new(1, 0, 0, 18),
                     BackgroundTransparency = 1,
                     Text = (opts.Text or idx) .. ": " .. Slider.Value,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -466,7 +468,7 @@ function Zilk:CreateWindow(options)
                 local Fill = Create("Frame", {
                     Parent = SliderBg,
                     Size = UDim2.new((Slider.Value - opts.Min) / (opts.Max - opts.Min), 0, 1, 0),
-                    BackgroundColor3 = Zilk.Theme.SliderColor,
+                    BackgroundColor3 = Theme.SliderColor,
                     ZIndex = 10
                 })
                 Create("UICorner", {Parent = Fill, CornerRadius = UDim.new(1, 0)})
@@ -516,7 +518,7 @@ function Zilk:CreateWindow(options)
                     Size = UDim2.new(1, 0, 0, 18),
                     BackgroundTransparency = 1,
                     Text = opts.Text or idx,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -526,9 +528,9 @@ function Zilk:CreateWindow(options)
                     Parent = Row,
                     Size = UDim2.new(1, 0, 0, 22),
                     Position = UDim2.new(0, 0, 0, 21),
-                    BackgroundColor3 = Zilk.Theme.DropdownColor,
+                    BackgroundColor3 = Theme.DropdownColor,
                     Text = tostring(Dropdown.Value or "None"),
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 11,
                     ZIndex = 9
@@ -545,7 +547,7 @@ function Zilk:CreateWindow(options)
                     BorderSizePixel = 0
                 })
                 Create("UICorner", {Parent = List, CornerRadius = UDim.new(0, 4)})
-                Create("UIStroke", {Parent = List, Color = Zilk.Theme.AccentColor, Thickness = 1})
+                Create("UIStroke", {Parent = List, Color = Theme.AccentColor, Thickness = 1})
                 local ListLayout = Create("UIListLayout", {Parent = List, SortOrder = Enum.SortOrder.LayoutOrder})
 
                 local function Rebuild()
@@ -556,7 +558,7 @@ function Zilk:CreateWindow(options)
                             Size = UDim2.new(1, 0, 0, 24),
                             BackgroundTransparency = 1,
                             Text = tostring(val),
-                            TextColor3 = Zilk.Theme.TextColor,
+                            TextColor3 = Theme.TextColor,
                             Font = Enum.Font.Gotham,
                             TextSize = 11,
                             ZIndex = 10001
@@ -596,7 +598,7 @@ function Zilk:CreateWindow(options)
                     Size = UDim2.new(1, -60, 1, 0),
                     BackgroundTransparency = 1,
                     Text = opts.Text or idx,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -606,9 +608,9 @@ function Zilk:CreateWindow(options)
                     Parent = Row,
                     Size = UDim2.new(0, 60, 0, 20),
                     Position = UDim2.new(1, -60, 0.5, -10),
-                    BackgroundColor3 = Zilk.Theme.ButtonColor,
+                    BackgroundColor3 = Theme.ButtonColor,
                     Text = GetInputName(Keybind.Value),
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.GothamBold,
                     TextSize = 10,
                     ZIndex = 9
@@ -653,7 +655,7 @@ function Zilk:CreateWindow(options)
                     Size = UDim2.new(1, -40, 1, 0),
                     BackgroundTransparency = 1,
                     Text = opts.Text or idx,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -679,7 +681,7 @@ function Zilk:CreateWindow(options)
                     ZIndex = 20000
                 })
                 Create("UICorner", {Parent = Popup, CornerRadius = UDim.new(0, 6)})
-                Create("UIStroke", {Parent = Popup, Color = Zilk.Theme.AccentColor, Thickness = 1})
+                Create("UIStroke", {Parent = Popup, Color = Theme.AccentColor, Thickness = 1})
 
                 -- Basic Hue Slider for 1:1 functionality
                 local HueSlider = Create("Frame", {
@@ -722,9 +724,9 @@ function Zilk:CreateWindow(options)
                 local Btn = Create("TextButton", {
                     Parent = Container,
                     Size = UDim2.new(1, 0, 0, 28),
-                    BackgroundColor3 = Zilk.Theme.ButtonColor,
+                    BackgroundColor3 = Theme.ButtonColor,
                     Text = text,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.GothamBold,
                     TextSize = 12,
                     ZIndex = 9
@@ -741,7 +743,7 @@ function Zilk:CreateWindow(options)
                     Size = UDim2.new(1, 0, 0, 18),
                     BackgroundTransparency = 1,
                     Text = opts.Text or idx,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -751,9 +753,9 @@ function Zilk:CreateWindow(options)
                     Parent = Row,
                     Size = UDim2.new(1, 0, 0, 22),
                     Position = UDim2.new(0, 0, 0, 21),
-                    BackgroundColor3 = Zilk.Theme.DropdownColor,
+                    BackgroundColor3 = Theme.DropdownColor,
                     Text = Input.Value,
-                    TextColor3 = Zilk.Theme.TextColor,
+                    TextColor3 = Theme.TextColor,
                     Font = Enum.Font.Gotham,
                     TextSize = 11,
                     PlaceholderText = "Type...",
@@ -801,7 +803,7 @@ function Zilk:CreateWindow(options)
         Size = UDim2.new(1, 0, 0, 20),
         BackgroundTransparency = 1,
         Text = "Current: None",
-        TextColor3 = Zilk.Theme.TextColor,
+        TextColor3 = Theme.TextColor,
         Font = Enum.Font.Gotham,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -835,7 +837,7 @@ function Zilk:CreateWindow(options)
 
     local ConfigList = Configs:AddDropdown("ConfigList", {Text = "Config List", Values = Zilk:GetConfigs()})
 
-    CreateCfgBtn("Save", UDim2.new(0, 0, 0, 0), Zilk.Theme.AccentColor, function()
+    CreateCfgBtn("Save", UDim2.new(0, 0, 0, 0), Theme.AccentColor, function()
         local name = Zilk.Options.ConfigName.Value
         if name ~= "" then
             Zilk:SaveConfig(name)
@@ -849,7 +851,7 @@ function Zilk:CreateWindow(options)
         if name and name ~= "None" then
             Zilk:LoadConfig(name)
             StatusLabel.Text = "Current: " .. name .. " (Loaded)"
-            StatusLabel.TextColor3 = Zilk.Theme.AccentColor
+            StatusLabel.TextColor3 = Theme.AccentColor
         end
     end)
     CreateCfgBtn("Overwrite", UDim2.new(0.5, 4, 0, 0), Color3.fromRGB(255, 165, 0), function()
@@ -866,7 +868,7 @@ function Zilk:CreateWindow(options)
             Zilk:DeleteConfig(name)
             ConfigList:SetValues(Zilk:GetConfigs())
             StatusLabel.Text = "Current: None"
-            StatusLabel.TextColor3 = Zilk.Theme.TextColor
+            StatusLabel.TextColor3 = Theme.TextColor
         end
     end)
 
