@@ -8,11 +8,11 @@ local Zilk = {
     Toggles = {},
     Options = {},
     Theme = {
-        Accent = Color3.fromRGB(85, 170, 255),
-        Background = Color3.fromRGB(20, 20, 20),
-        Container = Color3.fromRGB(30, 30, 30),
-        Text = Color3.fromRGB(255, 255, 255),
-        Outline = Color3.fromRGB(45, 45, 45),
+        Accent = Color3.fromRGB(147, 112, 219),
+        Background = Color3.fromRGB(10, 10, 10),
+        Container = Color3.fromRGB(20, 20, 20),
+        Text = Color3.fromRGB(240, 240, 240),
+        Outline = Color3.fromRGB(35, 35, 35),
         Dark = Color3.fromRGB(15, 15, 15),
         Hover = Color3.fromRGB(40, 40, 40)
     },
@@ -106,7 +106,8 @@ function Zilk:CreateWindow(options)
         Active = true
     })
     
-    Create("UIStroke", { Parent = MainFrame, Color = Zilk.Theme.Outline, Thickness = 1 })
+    Create("UICorner", { Parent = MainFrame, CornerRadius = UDim.new(0, 8) })
+    Create("UIStroke", { Parent = MainFrame, Color = Zilk.Theme.Accent, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border })
 
     local dragging, dragInput, dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
@@ -162,24 +163,27 @@ function Zilk:CreateWindow(options)
         Name = "TabContainer",
         Parent = MainFrame,
         BackgroundColor3 = Zilk.Theme.Container,
-        Size = UDim2.new(0, 130, 1, -26),
-        Position = UDim2.new(0, 0, 0, 26),
+        Size = UDim2.new(0, 130, 1, -25),
+        Position = UDim2.new(0, 0, 0, 25),
         BorderSizePixel = 0
     })
     
     Create("Frame", {
         Name = "Line",
-        Parent = TabContainer,
+        Parent = MainFrame,
         BackgroundColor3 = Zilk.Theme.Outline,
-        Size = UDim2.new(0, 1, 1, 0),
-        Position = UDim2.new(1, 0, 0, 0),
+        Size = UDim2.new(0, 1, 1, -25),
+        Position = UDim2.new(0, 130, 0, 25),
         BorderSizePixel = 0
     })
 
     local TabList = Create("UIListLayout", {
         Parent = TabContainer,
-        SortOrder = Enum.SortOrder.LayoutOrder
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 5),
+        HorizontalAlignment = Enum.HorizontalAlignment.Center
     })
+    Create("UIPadding", { Parent = TabContainer, PaddingTop = UDim.new(0, 10) })
 
     local ContentContainer = Create("Frame", {
         Name = "ContentContainer",
@@ -198,14 +202,16 @@ function Zilk:CreateWindow(options)
         
         local TabButton = Create("TextButton", {
             Parent = TabContainer,
-            Size = UDim2.new(1, 0, 0, 30),
+            Size = UDim2.new(0.9, 0, 0, 30),
+            BackgroundColor3 = Zilk.Theme.Container,
             BackgroundTransparency = 1,
             Text = name,
             TextColor3 = Zilk.Theme.Text,
-            Font = Enum.Font.GothamSemibold,
+            Font = Enum.Font.GothamBold,
             TextSize = 13,
             LayoutOrder = order
         })
+        Create("UICorner", { Parent = TabButton, CornerRadius = UDim.new(0, 4) })
         
         local TabFrame = Create("ScrollingFrame", {
             Parent = ContentContainer,
