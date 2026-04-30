@@ -1,748 +1,796 @@
-local Zilk = {
-    Version = "1.0",
-    Toggles = {},
-    Options = {},
-    ConfigFolder = "Zilk_Configs", -- Can be changed by user
-    MenuKeybind = Enum.KeyCode.RightShift,
-    Instances = {},
-    Connections = {},
-    Theme = {
-        Background = Color3.fromRGB(20, 20, 20),
-        SectionBackground = Color3.fromRGB(25, 25, 25),
-        Border = Color3.fromRGB(45, 45, 45),
-        Accent = Color3.fromRGB(100, 150, 255),
-        Text = Color3.fromRGB(240, 240, 240),
-        TextMuted = Color3.fromRGB(150, 150, 150),
-        Hover = Color3.fromRGB(35, 35, 35),
-        Click = Color3.fromRGB(45, 45, 45)
-    }
-}
+--[[
+	ZilkLib v1.0
+	Author: XIMMYzwsss
+	API: https://raw.githubusercontent.com/XIMMYzwsss/ZilkLib/refs/heads/main/Lib.lua
+--]]
 
-local Services = {
-    UserInputService = game:GetService("UserInputService"),
-    RunService = game:GetService("RunService"),
-    TweenService = game:GetService("TweenService"),
-    HttpService = game:GetService("HttpService"),
-    Players = game:GetService("Players")
-}
-
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TextService = game:GetService("TextService")
 local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Services.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
-local function Create(className, properties)
-    local inst = Instance.new(className)
-    for k, v in pairs(properties) do
-        inst[k] = v
-    end
-    table.insert(Zilk.Instances, inst)
-    return inst
+local Library = {}
+Library.__index = Library
+
+-- Global tables for saving/loading
+local Toggles = {}
+local Options = {}
+
+getgenv().Toggles = Toggles
+getgenv().Options = Options
+
+Library.ConfigFolder = nil  -- set by user
+
+-- Utility
+local function protectGui(gui)
+	pcall(function()
+		if protectgui then protectgui(gui) end
+		if syn and syn.protect_gui then syn.protect_gui(gui) end
+	end)
 end
 
-local function MakeDraggable(topbarobject, object)
-    local Dragging = nil
-    local DragInput = nil
-    local DragStart = nil
-    local StartPosition = nil
-
-    Zilk.Connections[#Zilk.Connections+1] = topbarobject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            Dragging = true
-            DragStart = input.Position
-            StartPosition = object.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    Dragging = false
-                end
-            end)
-        end
-    end)
-
-    Zilk.Connections[#Zilk.Connections+1] = topbarobject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            DragInput = input
-        end
-    end)
-
-    Zilk.Connections[#Zilk.Connections+1] = Services.UserInputService.InputChanged:Connect(function(input)
-        if input == DragInput and Dragging then
-            local delta = input.Position - DragStart
-            object.Position = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + delta.Y)
-        end
-    end)
+local function create(className, properties)
+	local inst = Instance.new(className)
+	for k, v in pairs(properties) do
+		inst[k] = v
+	end
+	return inst
 end
 
-function Zilk:CreateWindow(options)
-    local Window = {
-        Tabs = {},
-        ActiveTab = nil,
-        Title = options.Title or "Zilk Library"
-    }
-
-    local Size = options.Size or UDim2.fromOffset(600, 400)
-
-    -- GUI Setup
-    local ScreenGui = Create("ScreenGui", {
-        Name = Services.HttpService:GenerateGUID(false),
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        ResetOnSpawn = false
-    })
-    
-    local success, err = pcall(function()
-        ScreenGui.Parent = CoreGui
-    end)
-    if not success then
-        ScreenGui.Parent = LocalPlayer.PlayerGui
-    end
-    
-    Zilk.GUI = ScreenGui
-
-    local MainFrame = Create("Frame", {
-        Parent = ScreenGui,
-        BackgroundColor3 = Zilk.Theme.Background,
-        BorderColor3 = Zilk.Theme.Border,
-        BorderSizePixel = 1,
-        Position = UDim2.fromScale(0.5, 0.5),
-        Size = Size,
-        AnchorPoint = Vector2.new(0.5, 0.5)
-    })
-
-    local TopBar = Create("Frame", {
-        Parent = MainFrame,
-        BackgroundColor3 = Zilk.Theme.SectionBackground,
-        BorderColor3 = Zilk.Theme.Border,
-        BorderSizePixel = 1,
-        Size = UDim2.new(1, 0, 0, 25)
-    })
-
-    local TitleLabel = Create("TextLabel", {
-        Parent = TopBar,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 8, 0, 0),
-        Size = UDim2.new(1, -16, 1, 0),
-        Font = Enum.Font.Code,
-        Text = Window.Title,
-        TextColor3 = Zilk.Theme.Text,
-        TextSize = 14,
-        TextXAlignment = Enum.TextXAlignment.Left
-    })
-
-    local TabContainer = Create("Frame", {
-        Parent = MainFrame,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 0, 0, 25),
-        Size = UDim2.new(1, 0, 0, 25)
-    })
-    
-    Create("UIListLayout", {
-        Parent = TabContainer,
-        FillDirection = Enum.FillDirection.Horizontal,
-        SortOrder = Enum.SortOrder.LayoutOrder
-    })
-
-    local Line = Create("Frame", {
-        Parent = MainFrame,
-        BackgroundColor3 = Zilk.Theme.Accent,
-        BorderSizePixel = 0,
-        Position = UDim2.new(0, 0, 0, 50),
-        Size = UDim2.new(1, 0, 0, 2)
-    })
-
-    local ContentContainer = Create("Frame", {
-        Parent = MainFrame,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 0, 0, 52),
-        Size = UDim2.new(1, 0, 1, -52)
-    })
-
-    MakeDraggable(TopBar, MainFrame)
-
-    -- Toggle Menu
-    Zilk.Connections[#Zilk.Connections+1] = Services.UserInputService.InputBegan:Connect(function(input, gpe)
-        if not gpe and input.KeyCode == Zilk.MenuKeybind then
-            MainFrame.Visible = not MainFrame.Visible
-        end
-    end)
-
-    function Window:AddTab(name)
-        local Tab = {
-            Name = name,
-            Groupboxes = {Left = {}, Right = {}}
-        }
-        
-        local TabButton = Create("TextButton", {
-            Parent = TabContainer,
-            BackgroundColor3 = Zilk.Theme.SectionBackground,
-            BorderColor3 = Zilk.Theme.Border,
-            BorderSizePixel = 1,
-            Size = UDim2.new(0, 100, 1, 0),
-            Font = Enum.Font.Code,
-            Text = name,
-            TextColor3 = Zilk.Theme.TextMuted,
-            TextSize = 13,
-            AutoButtonColor = false
-        })
-
-        local TabContent = Create("Frame", {
-            Parent = ContentContainer,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0),
-            Visible = false
-        })
-
-        local LeftSide = Create("ScrollingFrame", {
-            Parent = TabContent,
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0, 5, 0, 5),
-            Size = UDim2.new(0.5, -7, 1, -10),
-            ScrollBarThickness = 2,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y
-        })
-
-        local RightSide = Create("ScrollingFrame", {
-            Parent = TabContent,
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0.5, 2, 0, 5),
-            Size = UDim2.new(0.5, -7, 1, -10),
-            ScrollBarThickness = 2,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y
-        })
-
-        Create("UIListLayout", {
-            Parent = LeftSide,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 10)
-        })
-
-        Create("UIListLayout", {
-            Parent = RightSide,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 10)
-        })
-
-        table.insert(self.Tabs, {Button = TabButton, Content = TabContent, Obj = Tab})
-
-        TabButton.MouseButton1Click:Connect(function()
-            for _, t in pairs(self.Tabs) do
-                t.Content.Visible = false
-                t.Button.TextColor3 = Zilk.Theme.TextMuted
-                t.Button.BackgroundColor3 = Zilk.Theme.SectionBackground
-            end
-            TabContent.Visible = true
-            TabButton.TextColor3 = Zilk.Theme.Text
-            TabButton.BackgroundColor3 = Zilk.Theme.Hover
-            self.ActiveTab = Tab
-        end)
-
-        if #self.Tabs == 1 then
-            TabContent.Visible = true
-            TabButton.TextColor3 = Zilk.Theme.Text
-            TabButton.BackgroundColor3 = Zilk.Theme.Hover
-            self.ActiveTab = Tab
-        end
-
-        function Tab:AddGroupbox(name, side)
-            local sideFrame = (side == "Right") and RightSide or LeftSide
-            
-            local Groupbox = {
-                Elements = {}
-            }
-
-            local BoxFrame = Create("Frame", {
-                Parent = sideFrame,
-                BackgroundColor3 = Zilk.Theme.SectionBackground,
-                BorderColor3 = Zilk.Theme.Border,
-                BorderSizePixel = 1,
-                Size = UDim2.new(1, -5, 0, 20),
-                AutomaticSize = Enum.AutomaticSize.Y
-            })
-
-            local BoxTitle = Create("TextLabel", {
-                Parent = BoxFrame,
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 5, 0, 0),
-                Size = UDim2.new(1, -10, 0, 20),
-                Font = Enum.Font.Code,
-                Text = name,
-                TextColor3 = Zilk.Theme.Text,
-                TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Left
-            })
-            
-            local BoxLine = Create("Frame", {
-                Parent = BoxFrame,
-                BackgroundColor3 = Zilk.Theme.Border,
-                BorderSizePixel = 0,
-                Position = UDim2.new(0, 0, 0, 20),
-                Size = UDim2.new(1, 0, 0, 1)
-            })
-
-            local ElementContainer = Create("Frame", {
-                Parent = BoxFrame,
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 0, 0, 25),
-                Size = UDim2.new(1, 0, 0, 0),
-                AutomaticSize = Enum.AutomaticSize.Y
-            })
-
-            Create("UIListLayout", {
-                Parent = ElementContainer,
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 2)
-            })
-            
-            Create("UIPadding", {
-                Parent = ElementContainer,
-                PaddingBottom = UDim.new(0, 5)
-            })
-
-            function Groupbox:AddToggle(idx, opts)
-                local Toggle = {Value = opts.Default or false}
-                
-                local ToggleFrame = Create("TextButton", {
-                    Parent = ElementContainer,
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 20),
-                    Text = ""
-                })
-
-                local Indicator = Create("Frame", {
-                    Parent = ToggleFrame,
-                    BackgroundColor3 = Toggle.Value and Zilk.Theme.Accent or Zilk.Theme.Background,
-                    BorderColor3 = Zilk.Theme.Border,
-                    Position = UDim2.new(0, 5, 0.5, -6),
-                    Size = UDim2.new(0, 12, 0, 12)
-                })
-
-                local Label = Create("TextLabel", {
-                    Parent = ToggleFrame,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 25, 0, 0),
-                    Size = UDim2.new(1, -25, 1, 0),
-                    Font = Enum.Font.Code,
-                    Text = opts.Text,
-                    TextColor3 = Zilk.Theme.TextMuted,
-                    TextSize = 13,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-
-                local function SetValue(val)
-                    Toggle.Value = val
-                    Indicator.BackgroundColor3 = val and Zilk.Theme.Accent or Zilk.Theme.Background
-                    Label.TextColor3 = val and Zilk.Theme.Text or Zilk.Theme.TextMuted
-                    Zilk.Toggles[idx] = Toggle
-                    if opts.Callback then
-                        task.spawn(opts.Callback, val)
-                    end
-                end
-
-                ToggleFrame.MouseButton1Click:Connect(function()
-                    SetValue(not Toggle.Value)
-                end)
-
-                function Toggle:SetValue(val)
-                    SetValue(val)
-                end
-
-                SetValue(Toggle.Value)
-                return Toggle
-            end
-
-            function Groupbox:AddSlider(idx, opts)
-                local Slider = {Value = opts.Default or opts.Min}
-                
-                local SliderFrame = Create("Frame", {
-                    Parent = ElementContainer,
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 35)
-                })
-
-                local Label = Create("TextLabel", {
-                    Parent = SliderFrame,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 5, 0, 0),
-                    Size = UDim2.new(1, -10, 0, 15),
-                    Font = Enum.Font.Code,
-                    Text = opts.Text .. " : " .. tostring(Slider.Value),
-                    TextColor3 = Zilk.Theme.TextMuted,
-                    TextSize = 13,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-
-                local SliderBack = Create("TextButton", {
-                    Parent = SliderFrame,
-                    BackgroundColor3 = Zilk.Theme.Background,
-                    BorderColor3 = Zilk.Theme.Border,
-                    Position = UDim2.new(0, 5, 0, 18),
-                    Size = UDim2.new(1, -10, 0, 10),
-                    Text = "",
-                    AutoButtonColor = false
-                })
-
-                local SliderFill = Create("Frame", {
-                    Parent = SliderBack,
-                    BackgroundColor3 = Zilk.Theme.Accent,
-                    BorderSizePixel = 0,
-                    Size = UDim2.new(0, 0, 1, 0)
-                })
-
-                local function SetValue(val)
-                    val = math.clamp(val, opts.Min, opts.Max)
-                    if opts.Rounding then
-                        val = math.floor((val / opts.Rounding) + 0.5) * opts.Rounding
-                    else
-                        val = math.floor(val)
-                    end
-                    Slider.Value = val
-                    Label.Text = opts.Text .. " : " .. tostring(val)
-                    
-                    local pct = (val - opts.Min) / (opts.Max - opts.Min)
-                    SliderFill.Size = UDim2.new(pct, 0, 1, 0)
-                    
-                    Zilk.Options[idx] = Slider
-                    if opts.Callback then
-                        task.spawn(opts.Callback, val)
-                    end
-                end
-
-                local dragging = false
-                SliderBack.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging = true
-                    end
-                end)
-
-                Services.UserInputService.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging = false
-                    end
-                end)
-
-                Services.UserInputService.InputChanged:Connect(function(input)
-                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                        local pct = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
-                        local val = opts.Min + (pct * (opts.Max - opts.Min))
-                        SetValue(val)
-                    end
-                end)
-
-                function Slider:SetValue(val)
-                    SetValue(val)
-                end
-
-                SetValue(Slider.Value)
-                return Slider
-            end
-
-            function Groupbox:AddDropdown(idx, opts)
-                local Dropdown = {Value = opts.Default or nil}
-                
-                local DropFrame = Create("Frame", {
-                    Parent = ElementContainer,
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 45)
-                })
-
-                local Label = Create("TextLabel", {
-                    Parent = DropFrame,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 5, 0, 0),
-                    Size = UDim2.new(1, -10, 0, 15),
-                    Font = Enum.Font.Code,
-                    Text = opts.Text,
-                    TextColor3 = Zilk.Theme.TextMuted,
-                    TextSize = 13,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-
-                local DropButton = Create("TextButton", {
-                    Parent = DropFrame,
-                    BackgroundColor3 = Zilk.Theme.Background,
-                    BorderColor3 = Zilk.Theme.Border,
-                    Position = UDim2.new(0, 5, 0, 18),
-                    Size = UDim2.new(1, -10, 0, 20),
-                    Font = Enum.Font.Code,
-                    Text = tostring(Dropdown.Value or "Select..."),
-                    TextColor3 = Zilk.Theme.Text,
-                    TextSize = 13
-                })
-
-                local DropList = Create("ScrollingFrame", {
-                    Parent = ContentContainer,
-                    BackgroundColor3 = Zilk.Theme.SectionBackground,
-                    BorderColor3 = Zilk.Theme.Border,
-                    ZIndex = 10,
-                    Visible = false,
-                    ScrollBarThickness = 2
-                })
-                
-                Create("UIListLayout", { Parent = DropList })
-
-                local function UpdateList()
-                    for _, child in pairs(DropList:GetChildren()) do
-                        if child:IsA("TextButton") then child:Destroy() end
-                    end
-                    local h = 0
-                    for _, val in ipairs(opts.Values) do
-                        local btn = Create("TextButton", {
-                            Parent = DropList,
-                            BackgroundColor3 = Zilk.Theme.SectionBackground,
-                            BorderSizePixel = 0,
-                            Size = UDim2.new(1, 0, 0, 20),
-                            Font = Enum.Font.Code,
-                            Text = tostring(val),
-                            TextColor3 = Zilk.Theme.TextMuted,
-                            TextSize = 13,
-                            ZIndex = 11
-                        })
-                        btn.MouseButton1Click:Connect(function()
-                            Dropdown:SetValue(val)
-                            DropList.Visible = false
-                        end)
-                        h = h + 20
-                    end
-                    DropList.CanvasSize = UDim2.new(0, 0, 0, h)
-                    DropList.Size = UDim2.new(0, DropButton.AbsoluteSize.X, 0, math.min(h, 100))
-                end
-
-                DropButton.MouseButton1Click:Connect(function()
-                    DropList.Visible = not DropList.Visible
-                    if DropList.Visible then
-                        DropList.Position = UDim2.new(0, DropButton.AbsolutePosition.X - ContentContainer.AbsolutePosition.X, 0, DropButton.AbsolutePosition.Y - ContentContainer.AbsolutePosition.Y + 22)
-                        UpdateList()
-                    end
-                end)
-
-                function Dropdown:SetValue(val)
-                    Dropdown.Value = val
-                    DropButton.Text = tostring(val)
-                    Zilk.Options[idx] = Dropdown
-                    if opts.Callback then
-                        task.spawn(opts.Callback, val)
-                    end
-                end
-
-                function Dropdown:SetValues(newVals)
-                    opts.Values = newVals
-                    UpdateList()
-                end
-
-                if Dropdown.Value then Dropdown:SetValue(Dropdown.Value) end
-                return Dropdown
-            end
-
-            function Groupbox:AddInput(idx, opts)
-                local InputOpt = {Value = opts.Default or ""}
-                
-                local InputFrame = Create("Frame", {
-                    Parent = ElementContainer,
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 45)
-                })
-
-                local Label = Create("TextLabel", {
-                    Parent = InputFrame,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 5, 0, 0),
-                    Size = UDim2.new(1, -10, 0, 15),
-                    Font = Enum.Font.Code,
-                    Text = opts.Text,
-                    TextColor3 = Zilk.Theme.TextMuted,
-                    TextSize = 13,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-
-                local TextBox = Create("TextBox", {
-                    Parent = InputFrame,
-                    BackgroundColor3 = Zilk.Theme.Background,
-                    BorderColor3 = Zilk.Theme.Border,
-                    Position = UDim2.new(0, 5, 0, 18),
-                    Size = UDim2.new(1, -10, 0, 20),
-                    Font = Enum.Font.Code,
-                    Text = InputOpt.Value,
-                    TextColor3 = Zilk.Theme.Text,
-                    TextSize = 13,
-                    ClearTextOnFocus = false
-                })
-
-                TextBox.FocusLost:Connect(function()
-                    InputOpt.Value = TextBox.Text
-                    Zilk.Options[idx] = InputOpt
-                    if opts.Callback then
-                        task.spawn(opts.Callback, TextBox.Text)
-                    end
-                end)
-
-                function InputOpt:SetValue(val)
-                    TextBox.Text = tostring(val)
-                    InputOpt.Value = tostring(val)
-                    Zilk.Options[idx] = InputOpt
-                    if opts.Callback then task.spawn(opts.Callback, val) end
-                end
-
-                Zilk.Options[idx] = InputOpt
-                return InputOpt
-            end
-
-            function Groupbox:AddButton(text, callback)
-                local ButtonFrame = Create("Frame", {
-                    Parent = ElementContainer,
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 30)
-                })
-
-                local Btn = Create("TextButton", {
-                    Parent = ButtonFrame,
-                    BackgroundColor3 = Zilk.Theme.Background,
-                    BorderColor3 = Zilk.Theme.Border,
-                    Position = UDim2.new(0, 5, 0, 5),
-                    Size = UDim2.new(1, -10, 0, 20),
-                    Font = Enum.Font.Code,
-                    Text = text,
-                    TextColor3 = Zilk.Theme.Text,
-                    TextSize = 13
-                })
-
-                Btn.MouseButton1Click:Connect(function()
-                    if callback then callback() end
-                end)
-            end
-
-            return Groupbox
-        end
-
-        return Tab
-    end
-    
-    Window.WindowInstance = ScreenGui
-    return Window
+local function addStroke(obj, color, thickness)
+	local stroke = create("UIStroke", {
+		Color = color or Color3.new(0, 0, 0),
+		Thickness = thickness or 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	})
+	stroke.Parent = obj
+	return stroke
 end
 
--- SaveManager Implementation Built-in Zilk
-local SaveManager = {}
-SaveManager.Folder = Zilk.ConfigFolder
-
-function SaveManager:SetFolder(folder)
-    self.Folder = folder
-    Zilk.ConfigFolder = folder
+local function getTextSize(text, font, size)
+	local vec = TextService:GetTextSize(text, size or 14, font or Enum.Font.GothamBold, Vector2.new(1920, 1080))
+	return vec.X, vec.Y
 end
 
-function SaveManager:CheckFolder()
-    if not isfolder(self.Folder) then
-        makefolder(self.Folder)
-    end
+-- Window creation
+function Library:CreateWindow(config)
+	config = config or {}
+	local title = config.Title or "Zilk"
+	local position = config.Position or UDim2.new(0, 175, 0, 50)
+	local size = config.Size or UDim2.new(0, 550, 0, 600)
+	local accent = config.AccentColor or Color3.fromRGB(147, 112, 219)
+	local mainColor = config.MainColor or Color3.fromRGB(20, 20, 20)
+	local textColor = config.TextColor or Color3.fromRGB(240, 240, 240)
+
+	local ScreenGui = create("ScreenGui", {
+		Name = "ZilkGUI",
+		Parent = CoreGui,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		ResetOnSpawn = false,
+	})
+	protectGui(ScreenGui)
+
+	local window = setmetatable({
+		Gui = ScreenGui,
+		Tabs = {},
+		AccentColor = accent,
+		MainColor = mainColor,
+		TextColor = textColor,
+		ConfigFolder = nil,
+	}, Library)
+
+	-- Main frame
+	local main = create("Frame", {
+		Name = "Main",
+		Size = size,
+		Position = position,
+		BackgroundColor3 = mainColor,
+		BorderSizePixel = 0,
+		Parent = ScreenGui,
+	})
+
+	local stroke = addStroke(main, accent, 2)
+
+	-- Title bar
+	local titleBar = create("Frame", {
+		Name = "TitleBar",
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundColor3 = Color3.new(0,0,0),
+		BackgroundTransparency = 0.6,
+		BorderSizePixel = 0,
+		Parent = main,
+	})
+	local titleLabel = create("TextLabel", {
+		Size = UDim2.new(1, -10, 1, 0),
+		Position = UDim2.new(0, 5, 0, 0),
+		BackgroundTransparency = 1,
+		Text = title,
+		TextColor3 = textColor,
+		Font = Enum.Font.GothamBold,
+		TextSize = 18,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = titleBar,
+	})
+	addStroke(titleLabel)
+
+	-- Tab container
+	local tabContainer = create("Frame", {
+		Name = "TabContainer",
+		Size = UDim2.new(0, 120, 1, -30),
+		Position = UDim2.new(0, 0, 0, 30),
+		BackgroundColor3 = Color3.new(0,0,0),
+		BackgroundTransparency = 0.4,
+		BorderSizePixel = 0,
+		Parent = main,
+	})
+	local tabList = create("UIListLayout", {
+		Padding = UDim.new(0, 2),
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = tabContainer,
+	})
+
+	-- Page container
+	local pageContainer = create("Frame", {
+		Name = "PageContainer",
+		Size = UDim2.new(1, -120, 1, -30),
+		Position = UDim2.new(0, 120, 0, 30),
+		BackgroundTransparency = 1,
+		Parent = main,
+	})
+
+	-- Functions for tabs
+	local tabCount = 0
+	function window:AddTab(name)
+		tabCount = tabCount + 1
+		local tabButton = create("TextButton", {
+			Name = name,
+			Size = UDim2.new(0.9, 0, 0, 30),
+			BackgroundColor3 = tabCount == 1 and accent or Color3.fromRGB(30,30,30),
+			TextColor3 = textColor,
+			Text = name,
+			Font = Enum.Font.GothamBold,
+			TextSize = 14,
+			BorderSizePixel = 0,
+			Parent = tabContainer,
+		})
+		addStroke(tabButton)
+
+		local page = create("ScrollingFrame", {
+			Name = name .. "Page",
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			ScrollBarThickness = 4,
+			ScrollBarImageColor3 = accent,
+			CanvasSize = UDim2.new(0, 0, 0, 1000),
+			Parent = pageContainer,
+		})
+		local pageLayout = create("UIListLayout", {
+			Padding = UDim.new(0, 8),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = page,
+		})
+
+		local groupBoxes = {}
+		local tab = {
+			Page = page,
+			Layout = pageLayout,
+		}
+
+		function tab:AddGroupbox(titleText)
+			local box = create("Frame", {
+				Name = "Groupbox",
+				Size = UDim2.new(0.95, 0, 0, 100),
+				BackgroundColor3 = Color3.fromRGB(25,25,25),
+				BorderSizePixel = 0,
+				Parent = page,
+			})
+			local boxStroke = addStroke(box, accent, 1)
+			local boxHeader = create("Frame", {
+				Size = UDim2.new(1, 0, 0, 20),
+				BackgroundColor3 = accent,
+				BackgroundTransparency = 0.3,
+				BorderSizePixel = 0,
+				Parent = box,
+			})
+			local boxTitle = create("TextLabel", {
+				Size = UDim2.new(1, -6, 1, 0),
+				Position = UDim2.new(0, 6, 0, 0),
+				BackgroundTransparency = 1,
+				Text = titleText,
+				TextColor3 = textColor,
+				Font = Enum.Font.GothamBold,
+				TextSize = 13,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Parent = boxHeader,
+			})
+			addStroke(boxTitle)
+			local content = create("Frame", {
+				Size = UDim2.new(1, -10, 1, -22),
+				Position = UDim2.new(0, 5, 0, 22),
+				BackgroundTransparency = 1,
+				Parent = box,
+			})
+			local contentLayout = create("UIListLayout", {
+				Padding = UDim.new(0, 4),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+				Parent = content,
+			})
+			box.Size = UDim2.new(0.95, 0, 0, contentLayout.AbsoluteContentSize.Y + 30)
+			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+				box.Size = UDim2.new(0.95, 0, 0, contentLayout.AbsoluteContentSize.Y + 25)
+			end)
+
+			local group = {
+				Content = content,
+				Layout = contentLayout,
+				Box = box,
+			}
+
+			-- Element adding methods
+			function group:AddToggle(idx, info)
+				local toggle = {
+					Value = info.Default or false,
+					Callback = info.Callback or function() end,
+				}
+				local labelText = info.Text or idx
+				local btn = create("TextButton", {
+					Size = UDim2.new(1, 0, 0, 24),
+					Text = "",
+					BackgroundTransparency = 1,
+					Parent = content,
+				})
+				local label = create("TextLabel", {
+					Size = UDim2.new(1, -40, 1, 0),
+					Position = UDim2.new(0, 0, 0, 0),
+					BackgroundTransparency = 1,
+					Text = labelText,
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 13,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Parent = btn,
+				})
+				addStroke(label)
+				local track = create("Frame", {
+					Size = UDim2.new(0, 30, 0, 14),
+					Position = UDim2.new(1, -35, 0.5, -7),
+					BackgroundColor3 = toggle.Value and accent or Color3.fromRGB(50,50,50),
+					BorderSizePixel = 0,
+					Parent = btn,
+				})
+				local knob = create("Frame", {
+					Size = UDim2.new(0, 10, 0, 10),
+					Position = UDim2.new(0, toggle.Value and 17 or 2, 0.5, -5),
+					BackgroundColor3 = Color3.new(1, 1, 1),
+					BorderSizePixel = 0,
+					Parent = track,
+				})
+				local function updateVisuals()
+					track.BackgroundColor3 = toggle.Value and accent or Color3.fromRGB(50,50,50)
+					TweenService:Create(knob, TweenInfo.new(0.15), {Position = UDim2.new(0, toggle.Value and 17 or 2, 0.5, -5)}):Play()
+				end
+				btn.MouseButton1Click:Connect(function()
+					toggle.Value = not toggle.Value
+					updateVisuals()
+					toggle.Callback(toggle.Value)
+				end)
+				toggle.UpdateVisuals = updateVisuals
+				Toggles[idx] = toggle
+				return toggle
+			end
+
+			function group:AddSlider(idx, info)
+				local slider = {
+					Value = info.Default,
+					Min = info.Min,
+					Max = info.Max,
+					Callback = info.Callback or function() end,
+				}
+				local labelText = info.Text or idx
+				local lbl = create("TextLabel", {
+					Size = UDim2.new(1, 0, 0, 16),
+					BackgroundTransparency = 1,
+					Text = labelText .. ": " .. tostring(slider.Value),
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 12,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Parent = content,
+				})
+				addStroke(lbl)
+				local sliderBar = create("Frame", {
+					Size = UDim2.new(1, 0, 0, 12),
+					BackgroundColor3 = Color3.fromRGB(40,40,40),
+					BorderSizePixel = 0,
+					Parent = content,
+				})
+				local fill = create("Frame", {
+					Size = UDim2.new(0, 0, 1, 0),
+					BackgroundColor3 = accent,
+					BorderSizePixel = 0,
+					Parent = sliderBar,
+				})
+				local dragging = false
+				local function updateFill(val)
+					local ratio = math.clamp((val - slider.Min) / (slider.Max - slider.Min), 0, 1)
+					fill.Size = UDim2.new(ratio, 0, 1, 0)
+					lbl.Text = labelText .. ": " .. tostring(math.floor(val * 100) / 100)
+				end
+				updateFill(slider.Value)
+				sliderBar.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+						dragging = true
+						local function move()
+							local rel = math.clamp((UserInputService:GetMouseLocation().X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+							local val = slider.Min + (slider.Max - slider.Min) * rel
+							slider.Value = val
+							updateFill(val)
+							slider.Callback(val)
+						end
+						move()
+						local conn
+						conn = UserInputService.InputChanged:Connect(function(inp)
+							if inp.UserInputType == Enum.UserInputType.MouseMovement then
+								move()
+							end
+						end)
+						local endConn
+						endConn = UserInputService.InputEnded:Connect(function(inp)
+							if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+								dragging = false
+								conn:Disconnect()
+								endConn:Disconnect()
+							end
+						end)
+					end
+				end)
+				Options[idx] = slider
+				return slider
+			end
+
+			function group:AddDropdown(idx, info)
+				local dropdown = {
+					Values = info.Values,
+					Value = info.Default,
+					Callback = info.Callback or function() end,
+				}
+				local labelText = info.Text or idx
+				local lbl = create("TextLabel", {
+					Size = UDim2.new(1, 0, 0, 16),
+					BackgroundTransparency = 1,
+					Text = labelText,
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 12,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Parent = content,
+				})
+				addStroke(lbl)
+				local btn = create("TextButton", {
+					Size = UDim2.new(1, 0, 0, 22),
+					Text = dropdown.Value,
+					BackgroundColor3 = Color3.fromRGB(40,40,40),
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 13,
+					Parent = content,
+				})
+				addStroke(btn)
+				local list = create("Frame", {
+					Size = UDim2.new(1, 0, 0, 0),
+					BackgroundColor3 = Color3.fromRGB(20,20,20),
+					Visible = false,
+					Parent = btn,
+				})
+				local listLayout = create("UIListLayout", {
+					SortOrder = Enum.SortOrder.LayoutOrder,
+					Parent = list,
+				})
+				local function rebuildList()
+					for _, v in ipairs(list:GetChildren()) do
+						if v:IsA("TextButton") then v:Destroy() end
+					end
+					for _, v in ipairs(dropdown.Values) do
+						local optBtn = create("TextButton", {
+							Size = UDim2.new(1, 0, 0, 20),
+							Text = v,
+							BackgroundTransparency = 1,
+							TextColor3 = textColor,
+							Font = Enum.Font.GothamBold,
+							TextSize = 12,
+							Parent = list,
+						})
+						optBtn.MouseButton1Click:Connect(function()
+							dropdown.Value = v
+							btn.Text = v
+							list.Visible = false
+							dropdown.Callback(v)
+						end)
+					end
+					list.Size = UDim2.new(1, 0, 0, #dropdown.Values * 20)
+				end
+				btn.MouseButton1Click:Connect(function()
+					list.Visible = not list.Visible
+				end)
+				rebuildList()
+				Options[idx] = dropdown
+				return dropdown
+			end
+
+			function group:AddKeybind(idx, info)
+				local keybind = {
+					Value = info.Default or Enum.KeyCode.LeftControl,
+					Callback = info.Callback or function() end,
+				}
+				local labelText = info.Text or idx
+				local lbl = create("TextLabel", {
+					Size = UDim2.new(0.6, 0, 0, 20),
+					BackgroundTransparency = 1,
+					Text = labelText,
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 12,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Parent = content,
+				})
+				addStroke(lbl)
+				local btn = create("TextButton", {
+					Size = UDim2.new(0.4, 0, 0, 20),
+					Position = UDim2.new(0.6, 0, 0, 0),
+					Text = keybind.Value.Name,
+					BackgroundColor3 = Color3.fromRGB(40,40,40),
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 11,
+					Parent = content,
+				})
+				addStroke(btn)
+				local waiting = false
+				btn.MouseButton1Click:Connect(function()
+					if waiting then return end
+					waiting = true
+					btn.Text = "..."
+					local conn
+					conn = UserInputService.InputBegan:Connect(function(input, gp)
+						if gp then return end
+						if input.UserInputType == Enum.UserInputType.Keyboard then
+							keybind.Value = input.KeyCode
+							btn.Text = input.KeyCode.Name
+							keybind.Callback(input.KeyCode)
+							waiting = false
+							conn:Disconnect()
+						end
+					end)
+				end)
+				Options[idx] = keybind
+				return keybind
+			end
+
+			function group:AddColorPicker(idx, info)
+				local color = {
+					Value = info.Default or Color3.fromRGB(255,255,255),
+					Callback = info.Callback or function() end,
+				}
+				local labelText = info.Text or idx
+				local lbl = create("TextLabel", {
+					Size = UDim2.new(0.6, 0, 0, 20),
+					BackgroundTransparency = 1,
+					Text = labelText,
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 12,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Parent = content,
+				})
+				addStroke(lbl)
+				local preview = create("TextButton", {
+					Size = UDim2.new(0.4, 0, 0, 20),
+					Position = UDim2.new(0.6, 0, 0, 0),
+					Text = "",
+					BackgroundColor3 = color.Value,
+					BorderSizePixel = 0,
+					Parent = content,
+				})
+				-- simple color popup (omitted for brevity, you can use a basic picker)
+				preview.MouseButton1Click:Connect(function()
+					-- In a real implementation you'd open a color picker here
+					-- For simplicity we just cycle through some colors
+					local r = math.random()
+					local newCol = Color3.fromHSV(r, 1, 1)
+					color.Value = newCol
+					preview.BackgroundColor3 = newCol
+					color.Callback(newCol)
+				end)
+				Options[idx] = color
+				return color
+			end
+
+			function group:AddButton(info)
+				local btn = create("TextButton", {
+					Size = UDim2.new(1, 0, 0, 24),
+					Text = info.Text or "Button",
+					BackgroundColor3 = accent,
+					BackgroundTransparency = 0.2,
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 13,
+					Parent = content,
+				})
+				addStroke(btn)
+				btn.MouseButton1Click:Connect(function()
+					if info.Callback then info.Callback() end
+				end)
+			end
+
+			function group:AddLabel(text)
+				local lbl = create("TextLabel", {
+					Size = UDim2.new(1, 0, 0, 16),
+					BackgroundTransparency = 1,
+					Text = text,
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 12,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextWrapped = true,
+					Parent = content,
+				})
+				addStroke(lbl)
+			end
+
+			function group:AddDivider()
+				local div = create("Frame", {
+					Size = UDim2.new(1, 0, 0, 1),
+					BackgroundColor3 = accent,
+					BackgroundTransparency = 0.5,
+					Parent = content,
+				})
+			end
+
+			table.insert(groupBoxes, group)
+			return group
+		end
+
+		-- Tab switching
+		tabButton.MouseButton1Click:Connect(function()
+			for _, otherPage in ipairs(pageContainer:GetChildren()) do
+				if otherPage:IsA("ScrollingFrame") then otherPage.Visible = false end
+			end
+			for _, otherBtn in ipairs(tabContainer:GetChildren()) do
+				if otherBtn:IsA("TextButton") then
+					otherBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+				end
+			end
+			page.Visible = true
+			tabButton.BackgroundColor3 = accent
+		end)
+		if tabCount == 1 then
+			tabButton.BackgroundColor3 = accent
+			page.Visible = true
+		end
+		window.Tabs[name] = tab
+		return tab
+	end
+
+	-- Add Settings and Config tabs automatically
+	local settingsTab = window:AddTab("Settings")
+	local settingsGroup = settingsTab:AddGroupbox("UI Settings")
+	settingsGroup:AddKeybind("MenuKeybind", {
+		Text = "Menu Keybind",
+		Default = Enum.KeyCode.RightShift,
+		Callback = function(key)
+			-- User can manually handle toggling
+		end,
+	})
+	settingsGroup:AddButton({
+		Text = "Unload",
+		Callback = function()
+			window.Gui:Destroy()
+		end,
+	})
+
+	local configTab = window:AddTab("Config")
+	local configGroup = configTab:AddGroupbox("Config Manager")
+	local configNameBox = nil
+	local configListFrame = nil
+	local function refreshConfigList()
+		if not configListFrame then return end
+		for _, v in ipairs(configListFrame:GetChildren()) do
+			if v:IsA("TextButton") then v:Destroy() end
+		end
+		local folder = window.ConfigFolder
+		if not folder then return end
+		pcall(function() makefolder(folder) end)
+		local files = listfiles(folder) or {}
+		for _, file in ipairs(files) do
+			local name = file:match("([^\\/]+)%.cfg$")
+			if name then
+				local btn = create("TextButton", {
+					Size = UDim2.new(1, 0, 0, 22),
+					Text = name,
+					BackgroundColor3 = Color3.fromRGB(40,40,40),
+					TextColor3 = textColor,
+					Font = Enum.Font.GothamBold,
+					TextSize = 12,
+					Parent = configListFrame,
+				})
+				btn.MouseButton1Click:Connect(function()
+					if configNameBox then configNameBox.Text = name end
+				end)
+			end
+		end
+	end
+
+	configNameBox = create("TextBox", {
+		Size = UDim2.new(1, 0, 0, 24),
+		BackgroundColor3 = Color3.fromRGB(40,40,40),
+		TextColor3 = textColor,
+		PlaceholderText = "Config name...",
+		PlaceholderColor3 = Color3.fromRGB(120,120,120),
+		Font = Enum.Font.GothamBold,
+		TextSize = 12,
+		ClearTextOnFocus = false,
+		Parent = configGroup.Content,
+	})
+
+	configGroup:AddButton({
+		Text = "Save",
+		Callback = function()
+			local name = configNameBox.Text
+			if name == "" then return end
+			local folder = window.ConfigFolder
+			if not folder then return end
+			-- save Toggles and Options
+			local data = {Toggles = {}, Options = {}}
+			for k, v in pairs(Toggles) do
+				data.Toggles[k] = v.Value
+			end
+			for k, v in pairs(Options) do
+				if v.Type == "Slider" or v.Type == "Dropdown" then
+					data.Options[k] = v.Value
+				elseif v.Type == "Keybind" then
+					data.Options[k] = v.Value.Name
+				elseif v.Type == "ColorPicker" then
+					data.Options[k] = {v.Value.R, v.Value.G, v.Value.B}
+				end
+			end
+			local json = game:GetService("HttpService"):JSONEncode(data)
+			pcall(function() makefolder(folder) end)
+			writefile(folder .. "/" .. name .. ".cfg", json)
+			refreshConfigList()
+		end,
+	})
+	configGroup:AddButton({
+		Text = "Load",
+		Callback = function()
+			local name = configNameBox.Text
+			if name == "" then return end
+			local folder = window.ConfigFolder
+			if not folder then return end
+			local success, content = pcall(readfile, folder .. "/" .. name .. ".cfg")
+			if not success then return end
+			local data = game:GetService("HttpService"):JSONDecode(content)
+			if data.Toggles then
+				for k, val in pairs(data.Toggles) do
+					if Toggles[k] then
+						Toggles[k].Value = val
+						if Toggles[k].UpdateVisuals then Toggles[k].UpdateVisuals() end
+					end
+				end
+			end
+			if data.Options then
+				for k, val in pairs(data.Options) do
+					if Options[k] then
+						if Options[k].Type == "Slider" or Options[k].Type == "Dropdown" then
+							Options[k].Value = val
+						elseif Options[k].Type == "Keybind" and type(val) == "string" then
+							local key = Enum.KeyCode[val]
+							if key then Options[k].Value = key end
+						elseif Options[k].Type == "ColorPicker" and type(val) == "table" then
+							Options[k].Value = Color3.new(val[1], val[2], val[3])
+						end
+						-- Update visuals if possible
+						if Options[k].Update then Options[k].Update() end
+					end
+				end
+			end
+		end,
+	})
+	configGroup:AddButton({
+		Text = "Delete",
+		Callback = function()
+			local name = configNameBox.Text
+			if name == "" then return end
+			local folder = window.ConfigFolder
+			if not folder then return end
+			pcall(delfile, folder .. "/" .. name .. ".cfg")
+			configNameBox.Text = ""
+			refreshConfigList()
+		end,
+	})
+	configListFrame = create("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 0, 120),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 3,
+		ScrollBarImageColor3 = accent,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		Parent = configGroup.Content,
+	})
+	local configListLayout = create("UIListLayout", {
+		Padding = UDim.new(0, 2),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = configListFrame,
+	})
+	configListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		configListFrame.CanvasSize = UDim2.new(0, 0, 0, configListLayout.AbsoluteContentSize.Y + 10)
+	end)
+	refreshConfigList()
+
+	-- Menu toggle via keybind (optional, can be set by user)
+	-- Example: Use Settings.MenuKeybind key to toggle visibility
+	window.MenuKeybind = Toggles["MenuKeybind"] or nil
+
+	-- Notifications
+	local notificationContainer = create("Frame", {
+		Size = UDim2.new(0, 250, 1, -20),
+		Position = UDim2.new(1, -260, 0, 0),
+		BackgroundTransparency = 1,
+		Parent = ScreenGui,
+	})
+	local notifLayout = create("UIListLayout", {
+		Padding = UDim.new(0, 5),
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Top,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = notificationContainer,
+	})
+	function Library:Notify(title, message, duration)
+		duration = duration or 3
+		local notif = create("Frame", {
+			Size = UDim2.new(1, 0, 0, 70),
+			BackgroundColor3 = mainColor,
+			BackgroundTransparency = 0.2,
+			BorderSizePixel = 0,
+			Parent = notificationContainer,
+		})
+		local stroke = addStroke(notif, accent)
+		local titleLabel = create("TextLabel", {
+			Size = UDim2.new(1, -10, 0, 20),
+			Position = UDim2.new(0, 5, 0, 5),
+			BackgroundTransparency = 1,
+			Text = title,
+			TextColor3 = accent,
+			Font = Enum.Font.GothamBold,
+			TextSize = 14,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = notif,
+		})
+		local msgLabel = create("TextLabel", {
+			Size = UDim2.new(1, -10, 0, 35),
+			Position = UDim2.new(0, 5, 0, 25),
+			BackgroundTransparency = 1,
+			Text = message,
+			TextColor3 = textColor,
+			Font = Enum.Font.GothamBold,
+			TextSize = 12,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = true,
+			Parent = notif,
+		})
+		delay(duration, function()
+			TweenService:Create(notif, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+			delay(0.3, function() notif:Destroy() end)
+		end)
+	end
+
+	return window
 end
 
-function SaveManager:Save(name)
-    self:CheckFolder()
-    local data = {
-        Toggles = {},
-        Options = {}
-    }
-    
-    for idx, toggle in pairs(Zilk.Toggles) do
-        data.Toggles[idx] = toggle.Value
-    end
-    for idx, opt in pairs(Zilk.Options) do
-        data.Options[idx] = opt.Value
-    end
-    
-    writefile(self.Folder .. "/" .. name .. ".json", Services.HttpService:JSONEncode(data))
+function Library:SetConfigFolder(path)
+	self.ConfigFolder = path
 end
 
-function SaveManager:Load(name)
-    local path = self.Folder .. "/" .. name .. ".json"
-    if isfile(path) then
-        local success, decoded = pcall(function()
-            return Services.HttpService:JSONDecode(readfile(path))
-        end)
-        
-        if success and type(decoded) == "table" then
-            if decoded.Toggles then
-                for idx, val in pairs(decoded.Toggles) do
-                    if Zilk.Toggles[idx] then
-                        Zilk.Toggles[idx]:SetValue(val)
-                    end
-                end
-            end
-            if decoded.Options then
-                for idx, val in pairs(decoded.Options) do
-                    if Zilk.Options[idx] then
-                        Zilk.Options[idx]:SetValue(val)
-                    end
-                end
-            end
-        end
-    end
-end
-
-function SaveManager:RefreshConfigs()
-    self:CheckFolder()
-    local configs = {}
-    for _, file in ipairs(listfiles(self.Folder)) do
-        if file:sub(-5) == ".json" then
-            local name = file:match("([^/\\]+)%.json$")
-            if name then table.insert(configs, name) end
-        end
-    end
-    return configs
-end
-
-function Zilk:BuildSettingsTab(WindowObject)
-    local SettingsTab = WindowObject:AddTab("Settings")
-    local ConfigBox = SettingsTab:AddGroupbox("Configuration", "Left")
-    
-    local ConfigInput = ConfigBox:AddInput("ConfigName", {
-        Text = "Config Name",
-        Default = "Default"
-    })
-    
-    local ConfigDrop = ConfigBox:AddDropdown("ConfigList", {
-        Text = "Select Config",
-        Values = SaveManager:RefreshConfigs(),
-        Default = nil
-    })
-
-    ConfigBox:AddButton("Refresh Configs", function()
-        ConfigDrop:SetValues(SaveManager:RefreshConfigs())
-    end)
-
-    ConfigBox:AddButton("Save Config", function()
-        local name = Zilk.Options["ConfigName"].Value
-        if name ~= "" then
-            SaveManager:Save(name)
-            ConfigDrop:SetValues(SaveManager:RefreshConfigs())
-        end
-    end)
-    
-    ConfigBox:AddButton("Load Config", function()
-        local name = Zilk.Options["ConfigList"].Value
-        if name and name ~= "" then
-            SaveManager:Load(name)
-        end
-    end)
-
-    local MenuBox = SettingsTab:AddGroupbox("Menu", "Right")
-    MenuBox:AddButton("Unload Zilk", function()
-        Zilk:Unload()
-    end)
-    
-    return SettingsTab
-end
-
-function Zilk:Unload()
-    for _, inst in pairs(self.Instances) do
-        if inst and inst.Parent then
-            inst:Destroy()
-        end
-    end
-    for _, conn in pairs(self.Connections) do
-        conn:Disconnect()
-    end
-end
-
-Zilk.SaveManager = SaveManager
-
-return Zilk
+return Library
