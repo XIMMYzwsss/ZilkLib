@@ -3019,12 +3019,27 @@ function Library:CreateWindow(...)
     function Library:UpdatePanelTransparency(transparency)
         Window.Outer.BackgroundTransparency = transparency
         Window.Inner.BackgroundTransparency = transparency
+        if Window.MainSectionOuter then Window.MainSectionOuter.BackgroundTransparency = transparency end
+        if Window.MainSectionInner then Window.MainSectionInner.BackgroundTransparency = transparency end
+        if Window.TabContainer then Window.TabContainer.BackgroundTransparency = transparency end
+        if Window.TabArea then Window.TabArea.BackgroundTransparency = transparency end
+        if Window.TabButtons then
+            for _, btn in pairs(Window.TabButtons) do
+                btn.BackgroundTransparency = transparency
+            end
+        end
     end
 
     function Library:UpdateBackgroundImage(assetId, transparency)
         if assetId and assetId ~= "" then
             Window.BackgroundImage.Image = "rbxassetid://" .. tostring(assetId:match("%d+") or assetId)
             Window.BackgroundImage.Visible = true
+            if Window.Inner.BackgroundTransparency == 0 then
+                Library:UpdatePanelTransparency(0.15)
+                if Options and Options.UIPanelTransparency then
+                    Options.UIPanelTransparency:SetValue(0.15)
+                end
+            end
         else
             Window.BackgroundImage.Visible = false
         end
@@ -3078,14 +3093,14 @@ function Library:CreateWindow(...)
     local TabArea = Library:Create('Frame', {
         BackgroundTransparency = 1;
         Position = UDim2.new(0, 8, 0, 8);
-        Size = UDim2.new(1, -16, 0, 21);
+        Size = UDim2.new(0, 120, 1, -16);
         ZIndex = 1;
         Parent = MainSectionInner;
     });
 
     local TabListLayout = Library:Create('UIListLayout', {
-        Padding = UDim.new(0, Config.TabPadding);
-        FillDirection = Enum.FillDirection.Horizontal;
+        Padding = UDim.new(0, 4);
+        FillDirection = Enum.FillDirection.Vertical;
         SortOrder = Enum.SortOrder.LayoutOrder;
         Parent = TabArea;
     });
@@ -3093,8 +3108,8 @@ function Library:CreateWindow(...)
     local TabContainer = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
         BorderColor3 = Library.OutlineColor;
-        Position = UDim2.new(0, 8, 0, 30);
-        Size = UDim2.new(1, -16, 1, -38);
+        Position = UDim2.new(0, 128, 0, 8);
+        Size = UDim2.new(1, -136, 1, -16);
         ZIndex = 2;
         Parent = MainSectionInner;
     });
@@ -3104,7 +3119,15 @@ function Library:CreateWindow(...)
         BackgroundColor3 = 'MainColor';
         BorderColor3 = 'OutlineColor';
     });
-
+    
+    Window.MainSectionOuter = MainSectionOuter;
+    Window.MainSectionInner = MainSectionInner;
+    Window.TabContainer = TabContainer;
+    Window.TabArea = TabArea;
+    
+    -- Ensure Background Image is on top of Outer but below panels
+    BackgroundImage.ZIndex = 1;
+    
     function Window:SetWindowTitle(Title)
         WindowLabel.Text = Title;
     end;
@@ -3115,12 +3138,10 @@ function Library:CreateWindow(...)
             Tabboxes = {};
         };
 
-        local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, 16);
-
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
             BorderColor3 = Library.OutlineColor;
-            Size = UDim2.new(0, TabButtonWidth + 8 + 4, 1, 0);
+            Size = UDim2.new(1, 0, 0, 25);
             ZIndex = 1;
             Parent = TabArea;
         });
@@ -3130,6 +3151,9 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
+        Window.TabButtons = Window.TabButtons or {}
+        table.insert(Window.TabButtons, TabButton)
+        
         local TabButtonLabel = Library:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0);
             Size = UDim2.new(1, 0, 1, -1);
@@ -3141,8 +3165,8 @@ function Library:CreateWindow(...)
         local Blocker = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
             BorderSizePixel = 0;
-            Position = UDim2.new(0, 0, 1, 0);
-            Size = UDim2.new(1, 0, 0, 1);
+            Position = UDim2.new(1, 0, 0, 0);
+            Size = UDim2.new(0, 1, 1, 0);
             BackgroundTransparency = 1;
             ZIndex = 3;
             Parent = TabButton;
