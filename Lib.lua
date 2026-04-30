@@ -2958,6 +2958,10 @@ function Library:CreateWindow(...)
     local Window = {
         Tabs = {};
     };
+    
+    Library.ActiveWindow = Window;
+    Library.Corners = {};
+    Library.UICornerRadius = 0;
 
     local Outer = Library:Create('Frame', {
         AnchorPoint = Config.AnchorPoint,
@@ -2981,6 +2985,53 @@ function Library:CreateWindow(...)
         ZIndex = 1;
         Parent = Outer;
     });
+    
+    local BackgroundImage = Library:Create('ImageLabel', {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 0,
+        Visible = false,
+        ImageTransparency = 0.5,
+        Parent = Inner
+    })
+    
+    local OuterCorner = Instance.new("UICorner", Outer)
+    OuterCorner.CornerRadius = UDim.new(0, 0)
+    local InnerCorner = Instance.new("UICorner", Inner)
+    InnerCorner.CornerRadius = UDim.new(0, 0)
+    
+    table.insert(Library.Corners, OuterCorner)
+    table.insert(Library.Corners, InnerCorner)
+
+    Window.Outer = Outer;
+    Window.Inner = Inner;
+    Window.BackgroundImage = BackgroundImage;
+
+    function Library:UpdateCornerRadius(radius)
+        Library.UICornerRadius = radius
+        for _, corner in pairs(Library.Corners) do
+            if corner and corner.Parent then
+                corner.CornerRadius = UDim.new(0, radius)
+            end
+        end
+    end
+
+    function Library:UpdatePanelTransparency(transparency)
+        Window.Outer.BackgroundTransparency = transparency
+        Window.Inner.BackgroundTransparency = transparency
+    end
+
+    function Library:UpdateBackgroundImage(assetId, transparency)
+        if assetId and assetId ~= "" then
+            Window.BackgroundImage.Image = "rbxassetid://" .. tostring(assetId:match("%d+") or assetId)
+            Window.BackgroundImage.Visible = true
+        else
+            Window.BackgroundImage.Visible = false
+        end
+        if transparency then
+            Window.BackgroundImage.ImageTransparency = transparency
+        end
+    end
 
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
