@@ -1814,6 +1814,164 @@ do
         });
     end;
 
+    function Funcs:AddESPPreview(Height)
+        local Groupbox = self;
+        local Container = Groupbox.Container;
+
+        local Stage = Library:Create('Frame', {
+            Name = 'ESPPreview';
+            BackgroundColor3 = Color3.fromRGB(14, 14, 14);
+            Size = UDim2.new(1, 0, 0, Height or 250);
+            ZIndex = 5;
+            Parent = Container;
+        });
+
+        Library:EnsureCorner(Stage, 5);
+        Library:Create('UIStroke', {
+            Color = Library.OutlineColor;
+            Thickness = 1;
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+            Parent = Stage;
+        });
+
+        for i = 1, 10 do
+            Library:Create('Frame', {
+                Name = 'GridV';
+                BackgroundColor3 = Color3.fromRGB(26, 26, 26);
+                BorderSizePixel = 0;
+                Size = UDim2.new(0, 1, 1, 0);
+                Position = UDim2.fromScale(i / 11, 0);
+                Parent = Stage;
+            });
+        end;
+
+        for j = 1, 8 do
+            Library:Create('Frame', {
+                Name = 'GridH';
+                BackgroundColor3 = Color3.fromRGB(26, 26, 26);
+                BorderSizePixel = 0;
+                Size = UDim2.new(1, 0, 0, 1);
+                Position = UDim2.fromScale(0, j / 9);
+                Parent = Stage;
+            });
+        end;
+
+        local Viewport = Library:Create('ViewportFrame', {
+            Name = 'AvatarViewport';
+            BackgroundTransparency = 1;
+            Size = UDim2.fromScale(1, 1);
+            ZIndex = 6;
+            Ambient = Color3.fromRGB(170, 170, 180);
+            LightColor = Color3.fromRGB(255, 255, 255);
+            LightDirection = Vector3.new(-0.4, -0.6, -1);
+            ImageTransparency = 1;
+            Parent = Stage;
+        });
+
+        local PreviewCam = Library:Create('Camera', {
+            Name = 'PreviewCamera';
+            FieldOfView = 30;
+            Parent = Viewport;
+        });
+        Viewport.CurrentCamera = PreviewCam;
+
+        Library:Create('TextLabel', {
+            Name = 'DragHint';
+            BackgroundTransparency = 1;
+            Font = Library.Font;
+            TextSize = 11;
+            TextColor3 = Color3.fromRGB(110, 110, 110);
+            Text = 'drag to rotate';
+            TextXAlignment = Enum.TextXAlignment.Right;
+            AnchorPoint = Vector2.new(1, 1);
+            Position = UDim2.new(1, -8, 1, -6);
+            Size = UDim2.fromOffset(100, 14);
+            ZIndex = 7;
+            Parent = Stage;
+        });
+
+        task.spawn(function()
+            local Model;
+
+            pcall(function()
+                local Char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+                local Waited = 0;
+                while not LocalPlayer:HasAppearanceLoaded() and Waited < 8 do
+                    task.wait(0.25);
+                    Waited += 0.25;
+                end;
+                Char.Archivable = true;
+                Model = Char:Clone();
+            end);
+
+            if not Model then
+                pcall(function()
+                    local Desc = Players:GetHumanoidDescriptionFromUserId(LocalPlayer.UserId);
+                    Model = Players:CreateHumanoidModelFromDescription(Desc, Enum.HumanoidRigType.R15);
+                end);
+            end;
+
+            if not Model or not Viewport.Parent then
+                if Model then Model:Destroy() end;
+                return;
+            end;
+
+            for _, d in ipairs(Model:GetDescendants()) do
+                if d:IsA('BaseScript') then d:Destroy() end;
+            end;
+
+            local Hum = Model:FindFirstChildOfClass('Humanoid');
+            if Hum then Hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end;
+
+            Model.Name = 'PreviewAvatar';
+            Model:PivotTo(CFrame.new(0, 0, 0));
+            Model.Parent = Viewport;
+
+            local CF, Size = Model:GetBoundingBox();
+            local Dist = Size.Y * 0.5 / math.tan(math.rad(PreviewCam.FieldOfView / 2)) * 1.12;
+            local Focus = CF.Position + Vector3.new(0, Size.Y * 0.02, 0);
+            local Yaw, Pitch = 0, 0.02;
+
+            local function UpdateCam()
+                local Dir = Vector3.new(math.sin(Yaw) * math.cos(Pitch), math.sin(Pitch), -math.cos(Yaw) * math.cos(Pitch));
+                PreviewCam.CFrame = CFrame.lookAt(Focus + Dir * Dist, Focus);
+            end;
+
+            UpdateCam();
+            TweenService:Create(Viewport, TweenInfo.new(0.5), { ImageTransparency = 0 }):Play();
+
+            local DragHint = Stage:FindFirstChild('DragHint');
+            local Dragging, LastX, LastY = false, 0, 0;
+
+            Library:GiveSignal(Stage.InputBegan:Connect(function(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    Dragging = true;
+                    LastX, LastY = Input.Position.X, Input.Position.Y;
+                    if DragHint then DragHint.TextTransparency = 1 end;
+                end;
+            end));
+
+            Library:GiveSignal(InputService.InputChanged:Connect(function(Input)
+                if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+                    local DX, DY = Input.Position.X - LastX, Input.Position.Y - LastY;
+                    LastX, LastY = Input.Position.X, Input.Position.Y;
+                    Yaw -= DX * 0.01;
+                    Pitch = math.clamp(Pitch + DY * 0.01, -1.2, 1.2);
+                    UpdateCam();
+                end;
+            end));
+
+            Library:GiveSignal(InputService.InputEnded:Connect(function(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    Dragging = false;
+                end;
+            end));
+        end);
+
+        Groupbox:AddBlank(3);
+        Groupbox:Resize();
+    end;
+
     function Funcs:AddLabel(Text, DoesWrap)
         local Label = {};
 
