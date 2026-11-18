@@ -6,7 +6,7 @@ local function loadZilkModule(path)
 	if typeof(readfile) == 'function' and typeof(isfile) == 'function' and isfile(path) then
 		return loadstring(readfile(path), '@' .. path)()
 	end
-	local repo = 'https://raw.githubusercontent.com/workering21/ZilkLib/refs/heads/main/ZilkLib/'
+	local repo = 'https://raw.githubusercontent.com/XIMMYzwsss/ZilkLib/refs/heads/main/ZilkLib/'
 	local rel = path:gsub('^ZilkLib/', '')
 	return loadstring(game:HttpGet(repo .. rel), '@ZilkLib/' .. rel)()
 end
