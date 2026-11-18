@@ -6,7 +6,7 @@ local function loadZilkModule(path)
 	if typeof(readfile) == 'function' and typeof(isfile) == 'function' and isfile(path) then
 		return loadstring(readfile(path), '@' .. path)()
 	end
-	local repo = 'https://raw.githubusercontent.com/XIMMYzwsss/ZilkLib/main/ZilkLib/'
+	local repo = 'https://raw.githubusercontent.com/workering21/ZilkLib/refs/heads/main/ZilkLib/'
 	local rel = path:gsub('^ZilkLib/', '')
 	return loadstring(game:HttpGet(repo .. rel), '@ZilkLib/' .. rel)()
 end
@@ -342,6 +342,8 @@ espDep:AddSlider('ESPMaxDistance', {
 	Suffix = ' studs',
 })
 espDep:SetupDependencies({ { espMaster, true } })
+local PreviewBox = Tab4:AddRightGroupbox('ESP Preview')
+PreviewBox:AddESPPreview(240)
 local MovementBox = Tab4:AddLeftGroupbox('Movement Extras')
 MovementBox:AddToggle('NoClip', { Text = 'NoClip', Default = false })
 MovementBox:AddToggle('InfiniteJump', { Text = 'Infinite Jump', Default = false })
